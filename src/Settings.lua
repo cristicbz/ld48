@@ -10,7 +10,7 @@ settings = {
 
   debug = {
     show_lines = false,
-    disable_lightmap = true,
+    disable_lightmap = false,
   },
 
   priorities = {
