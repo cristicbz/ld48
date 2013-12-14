@@ -36,7 +36,7 @@ function Swimmer.new(cell, assets)
     settings.entities.swimmer.restitution,
     settings.entities.swimmer.friction)
     
-  body:setAngularDamping(0.9)
+  body:setFixedRotation(true)
 
   self.sprite_ = MOAIProp2D.new()
   self.sprite_:setDeck(assets.swimmer)

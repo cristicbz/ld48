@@ -27,6 +27,7 @@ function GameState.new( assets, viewport )
   self.fgLayer:setBox2DWorld( self.world )
   self.fgLayer:setCamera( self.camera )
   self.fgLayer:showDebugLines(settings.debug.show_lines)
+  self.fgLayer:setSortMode(MOAILayer2D.SORT_NONE)
 
   -- Create background layer
   self.bgLayer = MOAILayer2D.new()
@@ -52,8 +53,7 @@ function GameState.new( assets, viewport )
   MOAISim.pushRenderPass( self.overlayLayer )
 
   -- Initial update
-  self.level:init()
-  self.level:update( MOAISim.getStep() )
+  self.level:reload()
   self.camera:setLoc(0, 0)
 
   self:unpause()
@@ -71,22 +71,6 @@ function GameState:die()
   self.swimmer:destroy()
 end
 
-function GameState:updateCamera()
-end
-
-function GameState:update()
-  self:updateCamera()
-end
-
 function GameState:run()
-  self.coroutine = MOAICoroutine.new()
-  self.coroutine:run(
-    function ()
-      while true do
-        self:update()
-        coroutine.yield()
-      end
-    end
-  )
 end
 

@@ -112,27 +112,49 @@ function Level.new(world, bgLayer, fgLayer, overlayLayer, assets)
   self.lightmap = LightMap.new(overlayLayer)
 
   self.bodyLookup = ActiveSet.new()
-
   self.globalCell = LevelCell.new(self)
 
-  MOAIGfxDevice.setClearColor(0.0, 0.1, 0.2, 1.0)
-
-  for i = 1, 30 do
-    local sprite = MOAIProp2D.new()
-    sprite:setDeck(assets.swimmer)
-    sprite:setLoc(randomf(-5,5), randomf(-3,3))
-    self.fgLayer:insertProp(sprite)
-  end
-
-  for i = 1, 10 do
-    local light = self.lightmap:addLight()
-    light:setLoc(randomf(-5,5), randomf(-3,3))
-    light:setScl(0.5)
-
-  end
-
-  
   return self
+end
+
+function Level:reload()
+  local bgDeck = MOAIGfxQuad2D.new()
+  bgDeck:setTexture(settings.levels[1].background)
+  bgDeck:setRect(-Game.kScreenWidth / 2, -Game.kScreenHeight / 2,
+                  Game.kScreenWidth / 2, Game.kScreenHeight / 2)
+  self.background_ = MOAIProp2D.new();
+  self.background_:setDeck(bgDeck)
+
+  self.bgLayer:insertProp(self.background_)
+
+  local loader, err = loadfile(settings.levels[1].definition_path)
+  local levelDefinition
+
+  if loader == nil then
+    print('Cannot open level ' .. err)
+  else
+    levelDefinition = loader()
+  end
+
+  local scale = Game.kScreenWidth / levelDefinition.width
+  local offsetX = -Game.kScreenWidth / 2
+  local offsetY = -Game.kScreenHeight / 2
+
+  self.player.body:setTransform(
+    levelDefinition.Player.x * scale + offsetX,
+    levelDefinition.Player.y * scale + offsetY)
+
+  for k, v in pairs(levelDefinition.Dangers)  do
+    local light = self.lightmap:addLight()
+    light:setLoc(v.x * scale + offsetX, v.y * scale + offsetY)
+    light:setScl(2.0)
+    light:setColor(0.0, 1.0, 0.0, 1.0)
+  end
+  
+
+  ObstaclePath.new(
+      self.globalCell, levelDefinition.Collisions, scale, offsetX, offsetY)
+  
 end
 
 function Level:registerBody( body, entity )
@@ -162,17 +184,5 @@ end
 function Level:unpause()
 
 end
-
-function Level:initCells()
-end
-
-function Level:init()
-
-end
-
-function Level:update(dt)
-
-end
-
 
 

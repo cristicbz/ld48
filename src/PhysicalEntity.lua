@@ -51,15 +51,6 @@ function PhysicalEntity:destroy()
     self.body  = nil
   end
 
-
   self.world = nil
   self.cell  = nil
-end
-
-function PhysicalEntity:onSubmerged()
-
-end
-
-function PhysicalEntity:onUnsubmerged()
-
 end
