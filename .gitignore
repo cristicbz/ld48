@@ -1,0 +1,7 @@
+*.swp
+*.luac
+*.png
+*.ttf
+*.swo
+hosts
+src/rat
