@@ -35,7 +35,9 @@ function LightMap.new(layer)
   self.destProp_:setPriority(settings.priorities.lightmap)
 
   self.destLayer_ = layer
-  self.destLayer_:insertProp(self.destProp_)
+  if not settings.debug.disable_lightmap then
+    self.destLayer_:insertProp(self.destProp_)
+  end
 
   return self
 end
