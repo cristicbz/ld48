@@ -156,6 +156,32 @@ function perlinNoise1D( x, persistence, octaves )
   return total
 end
 
+function createPropFromVerts(deck, idx, verts)
+  deck:setQuad(idx,
+               verts[1].x, verts[1].y, verts[2].x, verts[2].y,
+               verts[3].x, verts[3].y, verts[4].x, verts[4].y)
+
+  local prop = MOAIProp2D.new()
+  prop:setDeck(deck)
+  prop:setIndex(idx)
+
+  return prop
+end
+
+function createAlignedRectFromVerts(body, verts, xscale, yscale)
+  local dx, dy = verts[2].x - verts[1].x, verts[2].y - verts[1].y
+  local angle = math.atan2(dy, dx)
+  local sprite_width = math.sqrt(dx * dx + dy * dy)
+  dx, dy = verts[1].x - verts[3].x, verts[1].y - verts[3].y
+  local sprite_height = math.sqrt(dx * dx + dy * dy)
+  local fixw, fixh = xscale * sprite_width, yscale * sprite_height 
+
+  local fixture = body:addRect(0, 0, fixw, fixh, 0)
+  body:setTransform(verts[4].x, verts[4].y, angle*180/math.pi)
+
+  return fixture
+end
+
 
 -------------------------------------------------------------------------------
 -- Rig:     LinearRNG

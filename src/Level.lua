@@ -162,7 +162,7 @@ function Level:reload()
     self.player:destroy()
   end
 
-  for k, v in pairs(levelDefinition.Dangers) do
+  for k, v in pairs(levelDefinition.Test) do
     local entity_name = image_to_entity[v.link]
     if entity_name then
       local deck = killer_decks[entity_name]
