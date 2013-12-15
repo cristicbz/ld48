@@ -11,11 +11,15 @@ dofile("src/Entity.lua")
 dofile("src/ActiveSet.lua")
 dofile("src/PhysicalEntity.lua")
 dofile("src/DynamicEntity.lua")
+dofile("src/Effect.lua")
 dofile("src/ObstaclePath.lua")
 dofile("src/LightMap.lua")
 dofile("src/Level.lua")
 dofile("src/Game.lua")
+dofile("src/LightBall.lua")
 dofile("src/Swimmer.lua")
+dofile("src/SwimmerController.lua")
+dofile("src/Killer.lua")
 
 -------------------------------------------------------------------------------
 -- Entry point

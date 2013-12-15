@@ -11,7 +11,6 @@ function ObstaclePath.new(cell, path, scale, offsetX, offsetY)
       verts[i * 2 - 1] = points[i].x * scale + offsetX
       verts[i * 2] = points[i].y * scale + offsetY
     end
-    dumpMembersOf(verts,'')
 
     self.body:addChain(verts, true)
   end

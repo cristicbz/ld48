@@ -27,7 +27,6 @@ function GameState.new( assets, viewport )
   self.fgLayer:setBox2DWorld( self.world )
   self.fgLayer:setCamera( self.camera )
   self.fgLayer:showDebugLines(settings.debug.show_lines)
-  self.fgLayer:setSortMode(MOAILayer2D.SORT_NONE)
 
   -- Create background layer
   self.bgLayer = MOAILayer2D.new()

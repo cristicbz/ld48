@@ -13,5 +13,12 @@ function Assets.new()
       -settings.entities.swimmer.size, -settings.entities.swimmer.size,
       settings.entities.swimmer.size, settings.entities.swimmer.size)
 
+
+  self.coral_killer = MOAITexture.new()
+  self.coral_killer:load(settings.entities.coral_killer.texture_path)
+
+  self.rock_killer = MOAITexture.new()
+  self.rock_killer:load(settings.entities.rock_killer.texture_path)
+
   return self
 end

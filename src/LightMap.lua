@@ -35,8 +35,8 @@ function LightMap.new(layer)
 
     self.destProp_ = MOAIProp2D.new()
     self.destProp_:setDeck(self.destDeck_)
+    self.destProp_:setBlendMode(MOAIProp.GL_ZERO, MOAIProp.GL_SRC_COLOR)
     self.destProp_:setPriority(settings.priorities.lightmap)
-
     self.destLayer_:insertProp(self.destProp_)
   end
 
@@ -46,7 +46,7 @@ end
 function LightMap:addLight()
   local prop = MOAIProp2D.new()
   prop:setDeck(self.lightDeck_)
-  prop:setBlendMode(MOAIProp.GL_ZERO, MOAIProp.GL_SRC_ALPHA)
+  prop:setBlendMode(MOAIProp.GL_SRC_ALPHA, MOAIProp.GL_ONE)
   self.layer_:insertProp(prop)
 
   return prop

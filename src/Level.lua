@@ -144,14 +144,45 @@ function Level:reload()
     levelDefinition.Player.x * scale + offsetX,
     levelDefinition.Player.y * scale + offsetY)
 
-  for k, v in pairs(levelDefinition.Dangers)  do
+  local image_to_entity = {}
+  image_to_entity["spikycoral.png"] = "coral_killer"
+  image_to_entity["rockshards.png"] = "rock_killer"
+
+  local killer_decks = {}
+  local numDangers = #levelDefinition.Dangers
+  killer_decks.coral_killer = MOAIGfxQuadDeck2D.new()
+  killer_decks.coral_killer:reserve(numDangers)
+  killer_decks.coral_killer:setTexture(self.assets.coral_killer)
+
+  killer_decks.rock_killer = MOAIGfxQuadDeck2D.new()
+  killer_decks.rock_killer:reserve(numDangers)
+  killer_decks.rock_killer:setTexture(self.assets.rock_killer)
+
+  function killerCallback()
+    self.player:destroy()
+  end
+
+  for k, v in pairs(levelDefinition.Dangers) do
+    local entity_name = image_to_entity[v.link]
+    if entity_name then
+      local deck = killer_decks[entity_name]
+      local entity = settings.entities[entity_name]
+      for i = 1,4 do
+        v[i].x = scale * v[i].x + offsetX
+        v[i].y = scale * v[i].y + offsetY
+      end
+      Killer.new(self.globalCell, entity, deck, k, v, killerCallback)
+    end
+  end
+
+  for i = 1,100  do
     local light = self.lightmap:addLight()
-    light:setLoc(v.x * scale + offsetX, v.y * scale + offsetY)
-    light:setScl(2.0)
-    light:setColor(0.0, 1.0, 0.0, 1.0)
+    --light:setLoc(v.x * scale + offsetX, v.y * scale + offsetY)
+    light:setLoc(randomf(-50,50), randomf(-50,50))
+    light:setScl(0.8)
+    light:setColor(0.6, 1.0, 0.6, 0.1)
   end
   
-
   ObstaclePath.new(
       self.globalCell, levelDefinition.Collisions, scale, offsetX, offsetY)
   
