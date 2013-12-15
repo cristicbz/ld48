@@ -19,6 +19,7 @@ function Killer.new(cell, opts, deck, idx, verts, callback)
                     settings.collision_masks.player)
   
   self.prop_ = createPropFromVerts(deck, idx, verts)
+  self.prop_:setPriority(settings.priorities.doodads)
   cell.fgLayer:insertProp(self.prop_)
 
   self.layer_ = cell.layer

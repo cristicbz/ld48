@@ -12,6 +12,7 @@ function LightBall.new(cell)
   self.sprite_ = MOAIProp2D.new()
   self.sprite_:setDeck(deck)
   self.sprite_:setParent(self.body)
+  self.sprite_:setPriority(settings.priorities.foreground)
 
   self.light_ = cell.lightmap:addLight()
   self.light_:setScl(opts.light_scale, opts.light_scale)

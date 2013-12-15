@@ -13,9 +13,10 @@ settings = { world = {
   },
 
   priorities = {
-    background = 100,
-    foreground = 200,
-    lightmap = 300,
+    background = 10,
+    doodads = 20,
+    foreground = 30,
+    lightmap = 40,
   },
 
   collision_masks = {
