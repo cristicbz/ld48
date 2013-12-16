@@ -18,7 +18,20 @@ function Swimmer.new(cell, assets)
 
   self.sprite_ = MOAIProp2D.new()
   self.sprite_:setDeck(assets.swimmer)
+  self.sprite_:setIndex(1)
   self.sprite_:setParent(self.body)
+
+  self.animTimer_ = MOAITimer.new()
+  self.animTimer_:setSpan(1.0 / opts.anim_fps)
+  self.animTimer_:setMode(MOAITimer.LOOP)
+  self.animTimer_:setListener(
+      MOAITimer.EVENT_TIMER_LOOP,
+      function()
+        self.sprite_:setIndex(
+            (self.sprite_:getIndex() + 1) % opts.anim_frames + 1);
+      end)
+  self.moving_ = false
+
 
   self.moveForce_ = opts.move_force
   self.launcherStrength_ = opts.launcher_strength
@@ -71,6 +84,16 @@ function Swimmer:update()
     elseif ctrlX > 0 then
       self.sprite_:setScl(1,1)
     end
+    if ctrlX ~= 0 or ctrlY ~= 0 then
+      if not self.moving_ then
+        self.animTimer_:start()
+        self.moving_ = true
+      end
+    elseif self.moving_ then
+      self.animTimer_:stop()
+        self.moving_ = false
+    end
+        
     self.body:applyForce(
       ctrlX * self.moveForce_, ctrlY * self.moveForce_,
       centerX, centerY)

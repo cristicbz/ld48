@@ -7,8 +7,9 @@ Assets = {}
 function Assets.new()
   local self = setmetatable({}, { __index = Assets })
 
-  self.swimmer = MOAIGfxQuad2D.new()
+  self.swimmer = MOAITileDeck2D.new()
   self.swimmer:setTexture(settings.entities.swimmer.texture_path)
+  self.swimmer:setSize(4, 4)
   self.swimmer:setRect(
       -settings.entities.swimmer.size, -settings.entities.swimmer.size,
       settings.entities.swimmer.size, settings.entities.swimmer.size)
@@ -22,6 +23,9 @@ function Assets.new()
 
   self.algae_glower = MOAITexture.new()
   self.algae_glower:load(settings.entities.algae_glower.texture_path)
+
+  self.red_algae_glower = MOAITexture.new()
+  self.red_algae_glower:load(settings.entities.red_algae_glower.texture_path)
 
   return self
 end

@@ -29,7 +29,7 @@ settings = { world = {
 
   entities = {
     swimmer = {
-      texture_path = "assets/swimmer64.png",
+      texture_path = "assets/swim-anim.png",
       size = 1.67,
       mass = 1.0,
       restitution = 0.1,
@@ -42,6 +42,8 @@ settings = { world = {
       flashlight_color = { 1.0, 1.0, 1.0, 0.8 },
 
       launcher_strength = 10.0,
+      anim_frames = 9,
+      anim_fps = 5
     },
 
     light_ball = {
@@ -71,8 +73,15 @@ settings = { world = {
     algae_glower = {
       texture_path = "assets/glowalgae.png",
       activate_radius = 6.0,
-      light_scale = 1.8,
+      light_scale = 1.3,
       light_color = { 0.1, 1.0, 0.6, 0.15 },
+    },
+
+    red_algae_glower = {
+      texture_path = "assets/glowalgae_red.png",
+      activate_radius = 6.0,
+      light_scale = 1.8,
+      light_color = { 0.2, 1.0, 1.0, 0.15 },
     },
   },
 

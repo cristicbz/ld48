@@ -177,19 +177,31 @@ function Level:reload()
   local numAlgae = #levelDefinition.Algae + #levelDefinition.LitAlgae
   local algaeOnDeck = MOAIGfxQuadDeck2D.new()
   local algaeOffDeck = MOAIGfxQuadDeck2D.new()
+  local redAlgaeOnDeck = MOAIGfxQuadDeck2D.new()
+  local redAlgaeOffDeck = MOAIGfxQuadDeck2D.new()
   algaeOnDeck:setTexture(self.assets.algae_glower)
   algaeOffDeck:setTexture(self.assets.algae_glower)
+  redAlgaeOnDeck:setTexture(self.assets.red_algae_glower)
+  redAlgaeOffDeck:setTexture(self.assets.red_algae_glower)
+
 
   algaeOnDeck:reserve(numAlgae)
   algaeOffDeck:reserve(numAlgae)
+  redAlgaeOnDeck:reserve(numAlgae)
+  redAlgaeOffDeck:reserve(numAlgae)
   local n
   for k, v in pairs(levelDefinition.Algae) do
       for i = 1,4 do
         v[i].x = scale * v[i].x + offsetX
         v[i].y = scale * v[i].y + offsetY
       end
-      Glower.new(self.globalCell, settings.entities.algae_glower,
-                 algaeOnDeck, algaeOffDeck, k, v)
+      if v.link == "glowalgae_red_on.png" then
+        Glower.new(self.globalCell, settings.entities.red_algae_glower,
+                   redAlgaeOnDeck, redAlgaeOffDeck, k, v):setGlowing(true)
+      else
+        Glower.new(self.globalCell, settings.entities.algae_glower,
+                   algaeOnDeck, algaeOffDeck, k, v)
+      end
       n = k
   end
 
