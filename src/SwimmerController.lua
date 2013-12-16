@@ -1,11 +1,12 @@
 SwimmerController = {}
 
-function SwimmerController.new(swimmer)
+function SwimmerController.new(level, swimmer)
   local self = setmetatable({}, {__index = SwimmerController})
   self.keyboard_ = MOAIInputMgr.device.keyboard
   self.pointer_ = MOAIInputMgr.device.pointer
   self.button_ = MOAIInputMgr.device.mouseLeft
   self.swimmer_ = swimmer
+  self.level_ = level
 
   self.boundCallback_ = function(down) self:callback_(down) end
   self.button_:setCallback(self.boundCallback_)
@@ -33,13 +34,14 @@ function SwimmerController:getMovement()
 end
 
 function SwimmerController:callback_(down)
-  local x, y = self.swimmer_:getLayer():wndToWorld(self.pointer_:getLoc())
-  self.swimmer_:launchLightBallTo(x, y)
+  if down then
+    local x, y = self.swimmer_:getLayer():wndToWorld(self.pointer_:getLoc())
+    self.swimmer_:launchLightBallTo(x, y)
+  end
 end
 
 function SwimmerController:destroy()
   self.button_:setCallback(nil)
-  self.keyboard_ = nil
   self.swimmer_ = nil
   self.pointer_ = nil
 end

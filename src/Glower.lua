@@ -44,6 +44,7 @@ function Glower.new(cell, opts, deckOn, deckOff, idx, verts)
   cell.fgLayer:insertProp(self.propOn_)
 
   self.layer_ = cell.fgLayer
+  self.lightmap_ = cell.lightmap
   self.on_ = false
   
 
@@ -67,4 +68,11 @@ function Glower:setGlowing(glow)
     self.light_:seekColor(lr, lg, lb, 0.0, 1.0, MOAIEaseType.EASE_IN)
     self.propOff_:seekColor(1.0, 1.0, 1.0, 1.0, 1.0, MOAIEaseType.EASE_IN)
   end
+end
+
+function Glower:destroy()
+  self.layer_:removeProp(self.propOff_)
+  self.layer_:removeProp(self.propOn_)
+  self.lightmap_:removeLight(self.light_)
+  PhysicalEntity.destroy(self)
 end

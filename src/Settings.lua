@@ -1,10 +1,17 @@
-settings = { world = {
+settings = {
+  world = {
     small_step_size = 1 / 120.0,
     screen_width = 100,
     screen_pixel_width = 1280,
     screen_pixel_height = 720,
     gravity = -0.02,
-    global_drag = 0.165
+    global_drag = 0.165,
+
+    new_level_fade_color = {1, 1, 1, 1},
+    new_level_fade_time = 0.6,
+
+    death_fade_color = {0, 0, 0, 1},
+    death_fade_time = 0.4,
   },
 
   debug = {
@@ -60,7 +67,11 @@ settings = { world = {
       friction = 0.0,
       light_scale = 1.0,
       light_color = { 0.5, 1.0, 1.0, 1.0 },
-      min_collect_time = 1.0,
+      min_collect_time = 0.8,
+    },
+
+    goal = {
+      activate_radius = 4.0,
     },
 
     coral_killer = {
@@ -88,6 +99,23 @@ settings = { world = {
       light_scale = 1.3,
       light_color = { 1.0, 0.4, 0.4, 0.2 },
     },
+
+    cosmetics = {
+      texture_path = "assets/algae.png",
+      link_to_uv = {
+        ["algae1.png"] = {0.0, 1.0, 0.25, 0.0},
+        ["algae2.png"] = {0.25, 1.0, 0.5, 0.0},
+        ["algae3.png"] = {0.5, 1.0, 0.75, 0.0},
+      }
+    }
+  },
+
+  sounds = {
+    music_path = "assets/track1.ogg",
+    music_volume = 1.0,
+
+    throw_path  = "assets/throw.ogg",
+    throw_volume = 0.3,
   },
 
   effects = {
@@ -102,6 +130,10 @@ settings = { world = {
       definition_path = "assets/l1.level",
       background = "assets/level1.png",
     }
+  },
+
+  misc = {
+    pixel_texture_path = "assets/pixel.png"
   }
 }
 

@@ -112,22 +112,59 @@ function Level.new(world, bgLayer, fgLayer, overlayLayer, assets)
   self.lightmap = LightMap.new(overlayLayer)
 
   self.bodyLookup = ActiveSet.new()
-  self.globalCell = LevelCell.new(self)
+
+  self.music = assets.music
+  self.music:setLooping(true)
+  self.music:play()
 
   return self
 end
 
-function Level:reload()
-  local bgDeck = MOAIGfxQuad2D.new()
-  bgDeck:setTexture(settings.levels[1].background)
-  bgDeck:setRect(-Game.kScreenWidth / 2, -Game.kScreenHeight / 2,
-                  Game.kScreenWidth / 2, Game.kScreenHeight / 2)
-  self.background_ = MOAIProp2D.new();
-  self.background_:setDeck(bgDeck)
+function Level:nextLevel()
+  self:reload(self.levelIndex_,
+              settings.world.new_level_fade_color,
+              settings.world.new_level_fade_time)
+end
 
-  self.bgLayer:insertProp(self.background_)
+function Level:reload(newIndex, fadeColor, fadeTime)
+  if not fadeColor then fadeColor = settings.world.death_fade_color end
+  if not fadeTime then fadeTime = settings.world.death_fade_time end
+  if not newIndex then newIndex = self.levelIndex_ end
+  if not self.bgDeck_ then
+    self.bgDeck_ = MOAIGfxQuad2D.new()
+    self.bgDeck_:setTexture(settings.levels[newIndex].background)
+    self.bgDeck_:setRect(-Game.kScreenWidth / 2, -Game.kScreenHeight / 2,
+                         Game.kScreenWidth / 2, Game.kScreenHeight / 2)
+    self.background_ = MOAIProp2D.new();
+    self.background_:setDeck(self.bgDeck_)
+    self.background_:setPriority(settings.priorities.background)
+    self.bgLayer:insertProp(self.background_)
+  end
 
-  local loader, err = loadfile(settings.levels[1].definition_path)
+  local fader = MOAIProp2D.new()
+  fader:setDeck(self.assets.fader)
+  fader:setPriority(settings.priorities.lightmap + 1)
+  if self.globalCell then 
+    fader:setColor(0, 0, 0, 0)
+    self.overlayLayer:insertProp(fader)
+    MOAICoroutine.blockOnAction(fader:seekColor(
+        fadeColor[1], fadeColor[2], fadeColor[3], 1.0,
+        fadeTime, MOAIEaseType.EASE_OUT))
+    self.globalCell:destroy()
+    self.bgLayer:clear()
+    self.bgLayer:insertProp(self.background_)
+  else
+    fader:setColor(fadeColor[1], fadeColor[2], fadeColor[3])
+  end
+
+  self.globalCell = LevelCell.new(self)
+
+  if newIndex ~= self.levelIndex_ then
+    self.bgDeck_:setTexture(settings.levels[newIndex].background)
+    self.levelIndex_ = newIndex
+  end
+
+  local loader, err = loadfile(settings.levels[newIndex].definition_path)
   local levelDefinition
 
   if loader == nil then
@@ -140,9 +177,14 @@ function Level:reload()
   local offsetX = -Game.kScreenWidth / 2
   local offsetY = -Game.kScreenHeight / 2
 
+  self.player = Swimmer.new(self.globalCell, self.assets)
   self.player.body:setTransform(
     levelDefinition.Player.x * scale + offsetX,
     levelDefinition.Player.y * scale + offsetY)
+  
+  self.goal = Goal.new(self.globalCell, settings.entities.goal,
+                       levelDefinition.Goal.x * scale + offsetX,
+                       levelDefinition.Goal.y * scale + offsetY)
 
   local image_to_entity = {}
   image_to_entity["spikycoral.png"] = "coral_killer"
@@ -158,7 +200,18 @@ function Level:reload()
   end
 
   function killerCallback()
-    self.player:destroy()
+    self.player:kill()
+    function callback(key, down)
+      if down == false then return end
+      local coro = MOAICoroutine.new()
+      coro:run(function()
+        MOAIInputMgr.device.mouseLeft:setCallback(nil)
+        MOAIInputMgr.device.keyboard:setCallback(nil)
+        self:reload()
+      end)
+    end
+    MOAIInputMgr.device.mouseLeft:setCallback(callback)
+    MOAIInputMgr.device.keyboard:setCallback(callback)
   end
 
   for k, v in pairs(levelDefinition.Dangers) do
@@ -183,7 +236,6 @@ function Level:reload()
   algaeOffDeck:setTexture(self.assets.algae_glower)
   redAlgaeOnDeck:setTexture(self.assets.red_algae_glower)
   redAlgaeOffDeck:setTexture(self.assets.red_algae_glower)
-
 
   algaeOnDeck:reserve(numAlgae)
   algaeOffDeck:reserve(numAlgae)
@@ -213,10 +265,29 @@ function Level:reload()
       Glower.new(self.globalCell, settings.entities.algae_glower,
                  algaeOnDeck, algaeOffDeck, k + n, v):setGlowing(true)
   end
-  
+
+  local cosmeticsDeck = MOAIGfxQuadDeck2D.new()
+  cosmeticsDeck:reserve(#levelDefinition.Cosmetics)
+  cosmeticsDeck:setTexture(self.assets.cosmetics)
+  for k, v in pairs(levelDefinition.Cosmetics) do
+      for i = 1,4 do
+        v[i].x = scale * v[i].x + offsetX
+        v[i].y = scale * v[i].y + offsetY
+      end
+
+      local prop = createPropFromVerts(cosmeticsDeck, k, v)
+      cosmeticsDeck:setUVRect(
+          k, unpack(settings.entities.cosmetics.link_to_uv[v.link]))
+      prop:setPriority(settings.priorities.background + 1)
+      self.bgLayer:insertProp(prop)
+  end
+
   ObstaclePath.new(
       self.globalCell, levelDefinition.Collisions, scale, offsetX, offsetY)
-  
+
+  MOAICoroutine.blockOnAction(fader:seekColor(0, 0, 0, 0, fadeTime,
+                                              MOAIEaseType.EASE_IN))
+  self.overlayLayer:removeProp(fader)
 end
 
 function Level:registerBody( body, entity )

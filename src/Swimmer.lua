@@ -12,11 +12,14 @@ function Swimmer.new(cell, assets)
   fixture:setFilter(settings.collision_masks.player,
                     settings.collision_masks.obstacle +
                     settings.collision_masks.collectible +
-                    settings.collision_masks.lethal)
+                    settings.collision_masks.lethal +
+                    settings.collision_masks.nonlethal)
     
   body:setFixedRotation(true)
   self.offsetX_ = opts.collision_offset_x
   self.offsetY_ = opts.collision_offset_y
+
+  self.throwSound_ = assets.throw_sound
 
   self.sprite_ = MOAIProp2D.new()
   self.sprite_:setDeck(assets.swimmer)
@@ -57,7 +60,7 @@ function Swimmer.new(cell, assets)
   self.light_:setLoc(opts.flashlight_pos[1], opts.flashlight_pos[2])
   self.light_:setScl(opts.flashlight_scale[1], opts.flashlight_scale[2]);
 
-  self.ctrl_ = SwimmerController.new(self)
+  self.ctrl_ = SwimmerController.new(cell.level, self)
 
   self.updateCoroutine_ = MOAICoroutine.new()
   self.updateCoroutine_:run(function() self:update() end)
@@ -71,11 +74,14 @@ function Swimmer:getLayer()
   return self.layer_
 end
 
+function Swimmer:kill()
+  self:destroy()
+end
+
 function Swimmer:destroy()
   self.dead_ = true
   self.layer_:removeProp(self.sprite_)
   self.lightmap_:removeLight(self.light_)
-  self.lightBall_:destroy()
   self.updateCoroutine_:stop()
   self.ctrl_:destroy()
   DynamicEntity.destroy(self)
@@ -116,6 +122,9 @@ function Swimmer:launchLightBallTo(x, y)
   if d < 0.01 or self.lightBall_:isEnabled() then return end
   vx = vx / d * self.launcherStrength_
   vy = vy / d * self.launcherStrength_
+  self.throwSound_:stop();
+  self.throwSound_:setPosition(0)
+  self.throwSound_:play();
   self.lightBall_:launch(px, py, vx, vy)
   self.body:applyLinearImpulse(-vx * self.recoilStrength_,
                                -vy * self.recoilStrength_)

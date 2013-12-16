@@ -22,7 +22,7 @@ function Killer.new(cell, opts, deck, idx, verts, callback)
   self.prop_:setPriority(settings.priorities.doodads)
   cell.fgLayer:insertProp(self.prop_)
 
-  self.layer_ = cell.layer
+  self.layer_ = cell.fgLayer
 
   return self
 end

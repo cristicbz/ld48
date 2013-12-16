@@ -38,9 +38,12 @@ function Game.new()
   self.viewport:setScale(Game.kScreenWidth, 0)
   self.viewport:setSize(Game.kScreenPixelWidth, Game.kScreenPixelHeight)
   
+  MOAIUntzSystem.initialize()
+  MOAIUntzSystem.setVolume(1.0)
+
   -- Create assets
   self.assets = Assets.new()
-  
+
   -- Create game state. There will be multiple states (menu etc.).
   self.state = GameState.new(self.assets, self.viewport)
  

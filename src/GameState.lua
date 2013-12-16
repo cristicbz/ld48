@@ -42,17 +42,13 @@ function GameState.new( assets, viewport )
                          self.overlayLayer, assets)
   self.level:setCamera( self.camera )
 
-  -- Add swimmer
-  self.swimmer = Swimmer.new(self.level.globalCell, self.assets)
-  self.level:setPlayer(self.swimmer)
-
   -- Push layers in correct order
   MOAISim.pushRenderPass( self.bgLayer )
   MOAISim.pushRenderPass( self.fgLayer )
   MOAISim.pushRenderPass( self.overlayLayer )
 
   -- Initial update
-  self.level:reload()
+  self.level:reload(1)
   self.camera:setLoc(0, 0)
 
   self:unpause()
