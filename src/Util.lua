@@ -174,9 +174,9 @@ function createAlignedRectFromVerts(body, verts, xscale, yscale)
   local sprite_width = math.sqrt(dx * dx + dy * dy)
   dx, dy = verts[1].x - verts[3].x, verts[1].y - verts[3].y
   local sprite_height = math.sqrt(dx * dx + dy * dy)
-  local fixw, fixh = xscale * sprite_width, yscale * sprite_height 
+  local fixw, fixh = (1 - xscale) * sprite_width / 2, yscale * sprite_height
 
-  local fixture = body:addRect(0, 0, fixw, fixh, 0)
+  local fixture = body:addRect(fixw, 0, sprite_width - fixw, fixh, 0)
   body:setTransform(verts[4].x, verts[4].y, angle*180/math.pi)
 
   return fixture

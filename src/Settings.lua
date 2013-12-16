@@ -8,8 +8,8 @@ settings = { world = {
   },
 
   debug = {
-    show_lines = false,
-    disable_lightmap = false,
+    show_lines = true,
+    disable_lightmap = true,
   },
 
   priorities = {
@@ -37,6 +37,10 @@ settings = { world = {
       move_force = 5.0,
       recoil_strength = 0.3,
 
+      collision_scale = 0.7,
+      collision_offset_x = 0.3,
+      collision_offset_y = 0.2,
+
       flashlight_pos = { 1.17, 0.5 },
       flashlight_scale = { 0.4, 0.26 },
       flashlight_color = { 1.0, 1.0, 1.0, 0.8 },
@@ -60,14 +64,14 @@ settings = { world = {
 
     coral_killer = {
       texture_path = "assets/spikycoral.png",
-      collision_height = 32 / 64,
-      collision_width  = 58 / 64,
+      collision_height = 24 / 64,
+      collision_width  = 26 / 64,
     },
 
     rock_killer = {
       texture_path = "assets/rockshards.png",
-      collision_height = 32 / 64,
-      collision_width  = 58 / 64,
+      collision_height = 24 / 64,
+      collision_width  = 26 / 64,
     },
 
     algae_glower = {
@@ -80,8 +84,8 @@ settings = { world = {
     red_algae_glower = {
       texture_path = "assets/glowalgae_red.png",
       activate_radius = 6.0,
-      light_scale = 1.8,
-      light_color = { 0.2, 1.0, 1.0, 0.15 },
+      light_scale = 1.3,
+      light_color = { 1.0, 0.4, 0.4, 0.2 },
     },
   },
 

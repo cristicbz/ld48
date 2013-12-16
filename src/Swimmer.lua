@@ -7,7 +7,7 @@ function Swimmer.new(cell, assets)
 
   local opts = settings.entities.swimmer
   local body, fixture = self:addCircleFixture_(
-    opts.size, opts.mass, opts.restitution, opts.friction)
+    opts.size * opts.collision_scale, opts.mass, opts.restitution, opts.friction)
 
   fixture:setFilter(settings.collision_masks.player,
                     settings.collision_masks.obstacle +
@@ -20,6 +20,7 @@ function Swimmer.new(cell, assets)
   self.sprite_:setDeck(assets.swimmer)
   self.sprite_:setIndex(1)
   self.sprite_:setParent(self.body)
+  self.sprite_:setLoc(-opts.collision_offset_x, -opts.collision_offset_y)
 
   self.animTimer_ = MOAITimer.new()
   self.animTimer_:setSpan(1.0 / opts.anim_fps)
