@@ -138,10 +138,19 @@ function Level:reload(newIndex, fadeColor, fadeTime)
     self.bgDeck_:setTexture(settings.levels[newIndex].background)
     self.bgDeck_:setRect(-Game.kScreenWidth / 2, -Game.kScreenHeight / 2,
                          Game.kScreenWidth / 2, Game.kScreenHeight / 2)
+    self.outDeck_ = MOAIGfxQuad2D.new()
+    self.outDeck_:setTexture(settings.levels[newIndex].outline)
+    self.outDeck_:setRect(-Game.kScreenWidth / 2, -Game.kScreenHeight / 2,
+                           Game.kScreenWidth / 2, Game.kScreenHeight / 2)
     self.background_ = MOAIProp2D.new();
     self.background_:setDeck(self.bgDeck_)
     self.background_:setPriority(settings.priorities.background)
     self.bgLayer:insertProp(self.background_)
+
+    self.outline_ = MOAIProp2D.new();
+    self.outline_:setDeck(self.outDeck_)
+    self.outline_:setPriority(settings.priorities.lightmap - 1)
+    self.overlayLayer:insertProp(self.outline_)
   end
 
   local fader = MOAIProp2D.new()
@@ -154,8 +163,7 @@ function Level:reload(newIndex, fadeColor, fadeTime)
         fadeColor[1], fadeColor[2], fadeColor[3], 1.0,
         fadeTime, MOAIEaseType.EASE_OUT))
     self.globalCell:destroy()
-    self.bgLayer:clear()
-    self.bgLayer:insertProp(self.background_)
+    self.fgLayer:clear()
   else
     fader:setColor(fadeColor[1], fadeColor[2], fadeColor[3])
   end
@@ -164,6 +172,7 @@ function Level:reload(newIndex, fadeColor, fadeTime)
 
   if newIndex ~= self.levelIndex_ then
     self.bgDeck_:setTexture(settings.levels[newIndex].background)
+    self.outDeck_:setTexture(settings.levels[newIndex].outline)
     self.levelIndex_ = newIndex
   end
 
@@ -281,8 +290,8 @@ function Level:reload(newIndex, fadeColor, fadeTime)
       local prop = createPropFromVerts(cosmeticsDeck, k, v)
       cosmeticsDeck:setUVRect(
           k, unpack(settings.entities.cosmetics.link_to_uv[v.link]))
-      prop:setPriority(settings.priorities.background + 1)
-      self.bgLayer:insertProp(prop)
+      prop:setPriority(settings.priorities.doodads)
+      self.fgLayer:insertProp(prop)
   end
 
   ObstaclePath.new(

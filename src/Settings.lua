@@ -22,8 +22,8 @@ settings = {
 
   priorities = {
     background = 10,
-    doodads = 20,
-    foreground = 30,
+    foreground = 20,
+    doodads = 30,
     lightmap = 40,
   },
 
@@ -121,7 +121,6 @@ settings = {
       },
     },
 
-
     cosmetics = {
       texture_path = "assets/algae.png",
       link_to_uv = {
@@ -150,6 +149,11 @@ settings = {
     lightmap = {
       light_texture_path = "assets/spotlight-map.png",
       small_light_size = 10,
+    },
+
+    blood = {
+      texture_path = "assets/blood.png",
+      size = 0.1,
     }
   },
 
@@ -157,10 +161,12 @@ settings = {
     {
       definition_path = "assets/l1.level",
       background = "assets/level1.png",
+      outline = "assets/l1-outline.png",
     },
     {
       definition_path = "assets/l2.level",
       background = "assets/level2.png",
+      outline = "assets/l2-outline.png",
     }
   },
 

@@ -67,5 +67,10 @@ function Assets.new()
     self.swimmer_gibs:setRect(i, -w / 2, -h, w / 2, h)
   end
 
+  local sz = settings.effects.blood.size
+  self.blood_particle = MOAIGfxQuad2D.new()
+  self.blood_particle:setTexture(settings.effects.blood.texture_path)
+  self.blood_particle:setRect(-sz, -sz, sz, sz)
+
   return self
 end
