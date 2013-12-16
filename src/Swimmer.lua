@@ -203,13 +203,24 @@ function Swimmer:kill()
     end
   end
 
+  local coro = MOAICoroutine.new()
+  local light = self.light_
+  local lightmap = self.lightmap_
+  coro:run(function()
+    light:setScl(2.0, 2.0)
+    light:setColor(1,0,0,0.4)
+    MOAICoroutine.blockOnAction(
+        light:seekColor(0,0,0,0,1.2, MOAIEaseType.EASE_OUT))
+    lightmap:removeLight(light)
+  end)
+  self.light_ = nil
   self:destroy()
 end
 
 function Swimmer:destroy()
   self.dead_ = true
   self.layer_:removeProp(self.sprite_)
-  self.lightmap_:removeLight(self.light_)
+  if self.light_ then self.lightmap_:removeLight(self.light_) end
   self.updateCoroutine_:stop()
   self.ctrl_:destroy()
   DynamicEntity.destroy(self)
@@ -257,5 +268,9 @@ function Swimmer:launchLightBallTo(x, y)
   self.lightBall_:launch(px, py, vx, vy)
   self.body:applyLinearImpulse(-vx * self.recoilStrength_,
                                -vy * self.recoilStrength_)
+end
+
+function Swimmer:canWin()
+  return not self.lightBall_:isEnabled()
 end
 

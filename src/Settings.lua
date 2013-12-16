@@ -8,7 +8,7 @@ settings = {
     global_drag = 0.165,
 
     new_level_fade_color = {1, 1, 1, 1},
-    new_level_fade_time = 0.6,
+    new_level_fade_time = 0.7,
 
     death_fade_color = {0, 0, 0, 1},
     death_fade_time = 0.4,
@@ -17,7 +17,7 @@ settings = {
   debug = {
     show_lines = false,
     disable_lightmap = false,
-    no_sound = false,
+    no_sound = true,
   },
 
   priorities = {
@@ -25,6 +25,7 @@ settings = {
     foreground = 20,
     doodads = 30,
     lightmap = 40,
+    hud = 50,
   },
 
   collision_masks = {
@@ -73,6 +74,10 @@ settings = {
 
     goal = {
       activate_radius = 4.0,
+      light_scale = 2.0,
+      light_color = {0.0, 0.8, 1.0, 1.0},
+      fade_time_win = 1.0,
+      fade_time_no_win = 2.0,
     },
 
     coral_killer = {
@@ -110,14 +115,8 @@ settings = {
       mass = 0.5,
       tile_scale = {1/64, 1/128},
       tiles = {
-        {29,54,32,31},
-        {36,87,23,25},
-        {41,32,21,20},
-        {41,2,21,28},
-        {36,114,24,12},
-        {2,2,37,39},
-        {2,94,32,32},
-        {2,43,25,49},
+        {29,54,32,31}, {36,87,23,25}, {41,32,21,20}, {41,2,21,28},
+        {36,114,24,12}, {2,2,37,39}, {2,94,32,32}, {2,43,25,49},
       },
     },
 
@@ -154,10 +153,21 @@ settings = {
     blood = {
       texture_path = "assets/blood.png",
       size = 0.1,
+    },
+
+    game_over_text = {
+      texture_path = "assets/gameover-text.png",
+      width = 267,
+      height = 44,
     }
   },
 
   levels = {
+    {
+      definition_path = "assets/l0.level",
+      background = "assets/level0.png",
+      outline = "assets/l0-outline.png",
+    },
     {
       definition_path = "assets/l1.level",
       background = "assets/level1.png",
@@ -174,4 +184,3 @@ settings = {
     pixel_texture_path = "assets/pixel.png"
   }
 }
-

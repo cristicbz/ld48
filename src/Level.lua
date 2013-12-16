@@ -129,7 +129,6 @@ function Level:nextLevel()
 end
 
 function Level:reload(newIndex, fadeColor, fadeTime)
-  print(newIndex)
   if not fadeColor then fadeColor = settings.world.death_fade_color end
   if not fadeTime then fadeTime = settings.world.death_fade_time end
   if not newIndex then newIndex = self.levelIndex_ end
@@ -155,7 +154,7 @@ function Level:reload(newIndex, fadeColor, fadeTime)
 
   local fader = MOAIProp2D.new()
   fader:setDeck(self.assets.fader)
-  fader:setPriority(settings.priorities.lightmap + 1)
+  fader:setPriority(settings.priorities.lightmap + 20)
   if self.globalCell then 
     fader:setColor(0, 0, 0, 0)
     self.overlayLayer:insertProp(fader)
@@ -163,6 +162,8 @@ function Level:reload(newIndex, fadeColor, fadeTime)
         fadeColor[1], fadeColor[2], fadeColor[3], 1.0,
         fadeTime, MOAIEaseType.EASE_OUT))
     self.globalCell:destroy()
+    self:removeText()
+    self:removeGameOver()
     self.fgLayer:clear()
   else
     fader:setColor(fadeColor[1], fadeColor[2], fadeColor[3])
@@ -213,17 +214,16 @@ function Level:reload(newIndex, fadeColor, fadeTime)
 
   function killerCallback()
     self.player:kill()
+    self:showGameOver()
     function callback(key, down)
       if down == false then return end
       local coro = MOAICoroutine.new()
       coro:run(function()
         MOAIInputMgr.device.mouseLeft:setCallback(nil)
-        MOAIInputMgr.device.keyboard:setCallback(nil)
         self:reload()
       end)
     end
     MOAIInputMgr.device.mouseLeft:setCallback(callback)
-    MOAIInputMgr.device.keyboard:setCallback(callback)
   end
 
   for k, v in pairs(levelDefinition.Dangers) do
@@ -294,12 +294,86 @@ function Level:reload(newIndex, fadeColor, fadeTime)
       self.fgLayer:insertProp(prop)
   end
 
+  self:addText(levelDefinition)
+
   ObstaclePath.new(
       self.globalCell, levelDefinition.Collisions, scale, offsetX, offsetY)
 
   MOAICoroutine.blockOnAction(fader:seekColor(0, 0, 0, 0, fadeTime,
-                                              MOAIEaseType.EASE_IN))
+                                              MOAIEaseType.EASE_OUT))
   self.overlayLayer:removeProp(fader)
+end
+
+function Level:addText(def)
+  if not def.Text then return end
+
+  local scale = Game.kScreenWidth / def.width
+  local offsetX = -Game.kScreenWidth / 2
+  local offsetY = -Game.kScreenHeight / 2
+
+  self.textProps_ = {}
+
+  for k, v in pairs(def.Text) do
+    for i = 1,4 do
+      v[i].x = scale * v[i].x + offsetX
+      v[i].y = scale * v[i].y + offsetY
+    end
+
+    local deck = MOAIGfxQuad2D.new()
+    local prop = createPropFromVerts(deck, nil, v)
+
+    deck:setTexture('assets/' .. v.link)
+    prop:setPriority(settings.priorities.hud)
+    prop:setColor(0, 0, 0, 0)
+    self.overlayLayer:insertProp(prop)
+    defer(0.5 * (k - 1),
+          function()
+            prop:seekColor(0.8, 0.8, 0.8, 0.8, 2.0, MOAIEaseType.EASE_OUT)
+            defer(3.0, function()
+              prop:seekColor(0.6, 0.6, 0.6, 0.6, 1.0, MOAIEaseType.SMOOTH)
+            end)
+          end)
+
+    self.textProps_[k] = prop
+  end
+
+end
+
+function Level:removeText()
+  if self.textProps_ then
+    for k, v in pairs(self.textProps_) do
+      self.overlayLayer:removeProp(v)
+    end
+  end
+end
+
+function Level:hideText()
+  if self.textProps_ then
+    for k, v in pairs(self.textProps_) do
+      v:seekColor(0,0,0,0, 2.0, MOAIEaseType.EASE_IN)
+    end
+  end
+end
+
+function Level:showGameOver()
+  local prop = MOAIProp2D.new()
+  prop:setDeck(self.assets.game_over_text)
+  prop:setPriority(settings.priorities.hud)
+  prop:setColor(0, 0, 0, 0)
+  prop:seekColor(0.8, 0.8, 0.8, 1.0, 1.0, MOAIEaseType.EASE_IN)
+  defer(0.5, function()
+    prop:seekColor(0.5, 0.5, 0.5, 1.0, 1.0, MOAIEaseType.SMOOTH)
+  end)
+  self.overlayLayer:insertProp(prop)
+  self.gameOverProp_ = prop
+  self:hideText()
+end
+
+function Level:removeGameOver()
+  if self.gameOverProp_ then
+    self.overlayLayer:removeProp(self.gameOverProp_)
+    self.gameOverProp_ = nil
+  end
 end
 
 function Level:registerBody( body, entity )

@@ -72,5 +72,11 @@ function Assets.new()
   self.blood_particle:setTexture(settings.effects.blood.texture_path)
   self.blood_particle:setRect(-sz, -sz, sz, sz)
 
+  local width = settings.effects.game_over_text.width * Game.kPixelToWorld
+  local height = settings.effects.game_over_text.height * Game.kPixelToWorld
+  self.game_over_text = MOAIGfxQuad2D.new()
+  self.game_over_text:setTexture(settings.effects.game_over_text.texture_path)
+  self.game_over_text:setRect( -width / 2, -height / 2, width / 2, height / 2)
+
   return self
 end

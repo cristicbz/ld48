@@ -157,15 +157,36 @@ function perlinNoise1D( x, persistence, octaves )
 end
 
 function createPropFromVerts(deck, idx, verts)
-  deck:setQuad(idx,
-               verts[1].x, verts[1].y, verts[2].x, verts[2].y,
-               verts[3].x, verts[3].y, verts[4].x, verts[4].y)
-
   local prop = MOAIProp2D.new()
   prop:setDeck(deck)
-  prop:setIndex(idx)
+  if idx then
+    deck:setQuad(idx,
+                 verts[1].x, verts[1].y, verts[2].x, verts[2].y,
+                 verts[3].x, verts[3].y, verts[4].x, verts[4].y)
+    prop:setIndex(idx)
+  else
+    deck:setQuad(verts[1].x, verts[1].y, verts[2].x, verts[2].y,
+                 verts[3].x, verts[3].y, verts[4].x, verts[4].y)
+  end
 
   return prop
+end
+
+function defer(delay, fun, ...)
+  if delay == 0.0 then
+    local coro = MOAICoroutine.new()
+    coro:run(function() fun(unpack(arg)) end)
+    return
+  end
+
+  local timer = MOAITimer.new()
+  timer:setSpan(delay)
+  timer:setListener(MOAITimer.EVENT_TIMER_END_SPAN,
+      function()
+        timer = nil
+        fun(unpack(arg))
+      end)
+  timer:start()
 end
 
 function createAlignedRectFromVerts(body, verts, xscale, yscale)
