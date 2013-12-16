@@ -175,6 +175,7 @@ function Swimmer.new(cell, assets)
   self.lightBall_ = LightBall.new(cell)
 
   self.cell_ = cell
+  self.level_ = cell.level
   self.gibDeck_ = assets.swimmer_gibs
   self.bloodDeck_ = assets.blood_particle
 
@@ -185,7 +186,7 @@ function Swimmer:getLayer()
   return self.layer_
 end
 
-function Swimmer:kill()
+function Swimmer:explode()
   local px, py = self.body:getWorldCenter()
   self.lightBall_:launch(px, py, randomf(-0.1, 0.1), randomf(-0.1, 0.1))
   for i = 1, 8 do
@@ -208,13 +209,15 @@ function Swimmer:kill()
   local lightmap = self.lightmap_
   coro:run(function()
     light:setScl(2.0, 2.0)
-    light:setColor(1,0,0,0.4)
+    light:setColor(1,0.5,0.5,0.4)
     MOAICoroutine.blockOnAction(
         light:seekColor(0,0,0,0,1.2, MOAIEaseType.EASE_OUT))
     lightmap:removeLight(light)
   end)
   self.light_ = nil
+
   self:destroy()
+  self.level_:lose()
 end
 
 function Swimmer:destroy()

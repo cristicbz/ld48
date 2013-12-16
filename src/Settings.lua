@@ -88,7 +88,7 @@ settings = {
 
     rock_killer = {
       texture_path = "assets/rockshards.png",
-      collision_height = 24 / 64,
+      collision_height = 30 / 64,
       collision_width  = 52 / 64,
     },
 

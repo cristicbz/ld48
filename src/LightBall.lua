@@ -45,6 +45,7 @@ function LightBall.new(cell)
   self.layer_:insertProp(self.sprite_)
 
   self.level_ = cell.level
+  self.enabled_ = true
   self:disable()
 
   return self
@@ -53,15 +54,15 @@ end
 function LightBall:disable()
   self.body_:setActive(false)
   self.sprite_:setVisible(false)
-  self.enabled_ = false
   local coro = MOAICoroutine.new()
   coro:run(function()
     MOAICoroutine.blockOnAction(self.light_:seekColor(0,0,0,0,0.5, MOAIEaseType.SHARP_EASE_IN))
     self.light_:setVisible(false)
+    self.enabled_ = false
+    if self.level_.goal then self.level_.goal:changedWinState() end
   end)
   self.collectible_ = false
   self.timer_ = nil
-  if self.level_.goal then self.level_.goal:changedWinState() end
 end
 
 function LightBall:launch(x, y, vx, vy)

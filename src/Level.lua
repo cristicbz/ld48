@@ -128,6 +128,19 @@ function Level:nextLevel()
               settings.world.new_level_fade_time)
 end
 
+function Level:lose()
+  self:showGameOver()
+  function callback(key, down)
+    if down == false then return end
+    local coro = MOAICoroutine.new()
+    coro:run(function()
+      MOAIInputMgr.device.mouseLeft:setCallback(nil)
+      self:reload()
+    end)
+  end
+  MOAIInputMgr.device.mouseLeft:setCallback(callback)
+end
+
 function Level:reload(newIndex, fadeColor, fadeTime)
   if not fadeColor then fadeColor = settings.world.death_fade_color end
   if not fadeTime then fadeTime = settings.world.death_fade_time end
@@ -213,17 +226,7 @@ function Level:reload(newIndex, fadeColor, fadeTime)
   end
 
   function killerCallback()
-    self.player:kill()
-    self:showGameOver()
-    function callback(key, down)
-      if down == false then return end
-      local coro = MOAICoroutine.new()
-      coro:run(function()
-        MOAIInputMgr.device.mouseLeft:setCallback(nil)
-        self:reload()
-      end)
-    end
-    MOAIInputMgr.device.mouseLeft:setCallback(callback)
+    self.player:explode()
   end
 
   for k, v in pairs(levelDefinition.Dangers) do
@@ -360,9 +363,11 @@ function Level:showGameOver()
   prop:setDeck(self.assets.game_over_text)
   prop:setPriority(settings.priorities.hud)
   prop:setColor(0, 0, 0, 0)
-  prop:seekColor(0.8, 0.8, 0.8, 1.0, 1.0, MOAIEaseType.EASE_IN)
-  defer(0.5, function()
-    prop:seekColor(0.5, 0.5, 0.5, 1.0, 1.0, MOAIEaseType.SMOOTH)
+  defer(2.0, function()
+    prop:seekColor(0.8, 0.8, 0.8, 1.0, 1.0, MOAIEaseType.EASE_IN)
+    defer(0.5, function()
+      prop:seekColor(0.5, 0.5, 0.5, 1.0, 1.0, MOAIEaseType.SMOOTH)
+    end)
   end)
   self.overlayLayer:insertProp(prop)
   self.gameOverProp_ = prop
