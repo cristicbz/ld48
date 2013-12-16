@@ -94,6 +94,8 @@ function Gib.new(cell, gib_deck, particle_deck, opts, idx)
 end
 
 function Gib:destroy()
+  self.emitter_:stop()
+  self.layer_:removeProp(self.system_)
   self.layer_:removeProp(self.prop_)
   DynamicEntity.destroy(self)
 end
