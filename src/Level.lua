@@ -150,13 +150,12 @@ function Level:reload()
 
   local killer_decks = {}
   local numDangers = #levelDefinition.Dangers
-  killer_decks.coral_killer = MOAIGfxQuadDeck2D.new()
-  killer_decks.coral_killer:reserve(numDangers)
-  killer_decks.coral_killer:setTexture(self.assets.coral_killer)
-
-  killer_decks.rock_killer = MOAIGfxQuadDeck2D.new()
-  killer_decks.rock_killer:reserve(numDangers)
-  killer_decks.rock_killer:setTexture(self.assets.rock_killer)
+  for k, v in pairs(image_to_entity) do
+    local deck = MOAIGfxQuadDeck2D.new()
+    deck:reserve(numDangers)
+    deck:setTexture(self.assets[v])
+    killer_decks[v] = deck
+  end
 
   function killerCallback()
     self.player:destroy()
@@ -175,12 +174,32 @@ function Level:reload()
     end
   end
 
-  for i = 1,100  do
-    local light = self.lightmap:addLight()
-    --light:setLoc(v.x * scale + offsetX, v.y * scale + offsetY)
-    light:setLoc(randomf(-50,50), randomf(-50,50))
-    light:setScl(0.8)
-    light:setColor(0.6, 1.0, 0.6, 0.1)
+  local numAlgae = #levelDefinition.Algae + #levelDefinition.LitAlgae
+  local algaeOnDeck = MOAIGfxQuadDeck2D.new()
+  local algaeOffDeck = MOAIGfxQuadDeck2D.new()
+  algaeOnDeck:setTexture(self.assets.algae_glower)
+  algaeOffDeck:setTexture(self.assets.algae_glower)
+
+  algaeOnDeck:reserve(numAlgae)
+  algaeOffDeck:reserve(numAlgae)
+  local n
+  for k, v in pairs(levelDefinition.Algae) do
+      for i = 1,4 do
+        v[i].x = scale * v[i].x + offsetX
+        v[i].y = scale * v[i].y + offsetY
+      end
+      Glower.new(self.globalCell, settings.entities.algae_glower,
+                 algaeOnDeck, algaeOffDeck, k, v)
+      n = k
+  end
+
+  for k, v in pairs(levelDefinition.LitAlgae) do
+      for i = 1,4 do
+        v[i].x = scale * v[i].x + offsetX
+        v[i].y = scale * v[i].y + offsetY
+      end
+      Glower.new(self.globalCell, settings.entities.algae_glower,
+                 algaeOnDeck, algaeOffDeck, k + n, v):setGlowing(true)
   end
   
   ObstaclePath.new(

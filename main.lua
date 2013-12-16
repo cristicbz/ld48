@@ -20,6 +20,7 @@ dofile("src/LightBall.lua")
 dofile("src/Swimmer.lua")
 dofile("src/SwimmerController.lua")
 dofile("src/Killer.lua")
+dofile("src/Glower.lua")
 
 -------------------------------------------------------------------------------
 -- Entry point

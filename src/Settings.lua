@@ -24,6 +24,7 @@ settings = { world = {
     player = 0x0002,
     collectible = 0x0004,
     lethal = 0x0008,
+    nonlethal = 0x0010,
   },
 
   entities = {
@@ -57,16 +58,21 @@ settings = { world = {
 
     coral_killer = {
       texture_path = "assets/spikycoral.png",
-      sprite_size = 64 / 1280 * 100 * .8,
       collision_height = 32 / 64,
       collision_width  = 58 / 64,
     },
 
     rock_killer = {
       texture_path = "assets/rockshards.png",
-      sprite_size = 64 / 1280 * 100 * .8,
       collision_height = 32 / 64,
       collision_width  = 58 / 64,
+    },
+
+    algae_glower = {
+      texture_path = "assets/glowalgae.png",
+      activate_radius = 6.0,
+      light_scale = 1.8,
+      light_color = { 0.1, 1.0, 0.6, 0.15 },
     },
   },
 
@@ -79,7 +85,7 @@ settings = { world = {
 
   levels = {
     {
-      definition_path = "assets/l1-test.level",
+      definition_path = "assets/l1.level",
       background = "assets/level1.png",
     }
   }

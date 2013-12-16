@@ -82,7 +82,7 @@ function Swimmer:launchLightBallTo(x, y)
   local px, py = self.body:getWorldCenter()
   local vx, vy = x - px, y - py
   local d = math.sqrt(vx * vx + vy * vy)
-  if d < 0.01 then return end
+  if d < 0.01 or self.lightBall_:isEnabled() then return end
   vx = vx / d * self.launcherStrength_
   vy = vy / d * self.launcherStrength_
   self.lightBall_:launch(px, py, vx, vy)

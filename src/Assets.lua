@@ -20,5 +20,8 @@ function Assets.new()
   self.rock_killer = MOAITexture.new()
   self.rock_killer:load(settings.entities.rock_killer.texture_path)
 
+  self.algae_glower = MOAITexture.new()
+  self.algae_glower:load(settings.entities.algae_glower.texture_path)
+
   return self
 end

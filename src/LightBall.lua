@@ -25,7 +25,8 @@ function LightBall.new(cell)
       collision_size, opts.mass, opts.restitution, opts.friction)
   fixture:setFilter(settings.collision_masks.collectible,
                     settings.collision_masks.obstacle +
-                    settings.collision_masks.player)
+                    settings.collision_masks.player +
+                    settings.collision_masks.nonlethal)
   fixture:setCollisionHandler(
       function(phase, a, b, arbiter)
         arbiter:setContactEnabled(false)
@@ -76,6 +77,10 @@ end
 
 function LightBall:isCollectible()
   return self.collectible_
+end
+
+function LightBall:isEnabled()
+  return self.enabled_
 end
 
 function LightBall:destroy()
