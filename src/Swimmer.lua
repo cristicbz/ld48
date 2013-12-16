@@ -15,6 +15,8 @@ function Swimmer.new(cell, assets)
                     settings.collision_masks.lethal)
     
   body:setFixedRotation(true)
+  self.offsetX_ = opts.collision_offset_x
+  self.offsetY_ = opts.collision_offset_y
 
   self.sprite_ = MOAIProp2D.new()
   self.sprite_:setDeck(assets.swimmer)
@@ -84,9 +86,11 @@ function Swimmer:update()
     local ctrlX, ctrlY = self.ctrl_:getMovement()
     local centerX, centerY = self.body:getWorldCenter()
     if ctrlX < 0 then
-      self.body:setScl(-1,1)
+      self.sprite_:setScl(-1,1)
+      self.sprite_:setLoc(self.offsetX_, -self.offsetY_)
     elseif ctrlX > 0 then
-      self.body:setScl(1,1)
+      self.sprite_:setScl(1,1)
+      self.sprite_:setLoc(-self.offsetX_, -self.offsetY_)
     end
     if ctrlX ~= 0 or ctrlY ~= 0 then
       if not self.moving_ then
