@@ -8,7 +8,7 @@ settings = { world = {
   },
 
   debug = {
-    show_lines = false,
+    show_lines = true,
     disable_lightmap = true,
   },
 
@@ -37,9 +37,9 @@ settings = { world = {
       move_force = 5.0,
       recoil_strength = 0.3,
 
-      collision_scale = 0.7,
-      collision_offset_x = 0.3,
-      collision_offset_y = 0.2,
+      collision_scale = 0.67,
+      collision_offset_x = 0.27,
+      collision_offset_y = 0.27,
 
       flashlight_pos = { 1.17, 0.5 },
       flashlight_scale = { 0.4, 0.26 },
