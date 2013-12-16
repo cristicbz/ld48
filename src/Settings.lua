@@ -9,7 +9,7 @@ settings = { world = {
 
   debug = {
     show_lines = false,
-    disable_lightmap = false,
+    disable_lightmap = true,
   },
 
   priorities = {
@@ -47,7 +47,8 @@ settings = { world = {
 
       launcher_strength = 10.0,
       anim_frames = 9,
-      anim_fps = 5
+      anim_fps = 5,
+      idle_fps_scale = 0.2,
     },
 
     light_ball = {
@@ -65,13 +66,13 @@ settings = { world = {
     coral_killer = {
       texture_path = "assets/spikycoral.png",
       collision_height = 24 / 64,
-      collision_width  = 26 / 64,
+      collision_width  = 52 / 64,
     },
 
     rock_killer = {
       texture_path = "assets/rockshards.png",
       collision_height = 24 / 64,
-      collision_width  = 26 / 64,
+      collision_width  = 52 / 64,
     },
 
     algae_glower = {

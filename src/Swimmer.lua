@@ -22,6 +22,7 @@ function Swimmer.new(cell, assets)
   self.sprite_:setParent(self.body)
   self.sprite_:setLoc(-opts.collision_offset_x, -opts.collision_offset_y)
 
+  self.idleScale_ = opts.idle_fps_scale
   self.animTimer_ = MOAITimer.new()
   self.animTimer_:setSpan(1.0 / opts.anim_fps)
   self.animTimer_:setMode(MOAITimer.LOOP)
@@ -31,6 +32,8 @@ function Swimmer.new(cell, assets)
         self.sprite_:setIndex(
             (self.sprite_:getIndex() + 1) % opts.anim_frames + 1);
       end)
+  self.animTimer_:setSpeed(self.idleScale_)
+  self.animTimer_:start()
   self.moving_ = false
 
 
@@ -87,12 +90,12 @@ function Swimmer:update()
     end
     if ctrlX ~= 0 or ctrlY ~= 0 then
       if not self.moving_ then
-        self.animTimer_:start()
+      self.animTimer_:setSpeed(1.0)
         self.moving_ = true
       end
     elseif self.moving_ then
-      self.animTimer_:stop()
-        self.moving_ = false
+      self.animTimer_:setSpeed(self.idleScale_)
+      self.moving_ = false
     end
         
     self.body:applyForce(
