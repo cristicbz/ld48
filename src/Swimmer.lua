@@ -84,9 +84,9 @@ function Swimmer:update()
     local ctrlX, ctrlY = self.ctrl_:getMovement()
     local centerX, centerY = self.body:getWorldCenter()
     if ctrlX < 0 then
-      self.sprite_:setScl(-1,1)
+      self.body:setScl(-1,1)
     elseif ctrlX > 0 then
-      self.sprite_:setScl(1,1)
+      self.body:setScl(1,1)
     end
     if ctrlX ~= 0 or ctrlY ~= 0 then
       if not self.moving_ then

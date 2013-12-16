@@ -8,8 +8,8 @@ settings = { world = {
   },
 
   debug = {
-    show_lines = true,
-    disable_lightmap = true,
+    show_lines = false,
+    disable_lightmap = false,
   },
 
   priorities = {
