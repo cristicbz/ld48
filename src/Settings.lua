@@ -17,7 +17,7 @@ settings = {
   debug = {
     show_lines = false,
     disable_lightmap = false,
-    no_sound = true,
+    no_sound = false,
   },
 
   priorities = {
@@ -56,8 +56,8 @@ settings = {
 
       launcher_strength = 10.0,
       anim_frames = 9,
-      anim_fps = 5,
-      idle_fps_scale = 0.2,
+      anim_fps = 9,
+      idle_fps_scale = 0.3,
     },
 
     light_ball = {

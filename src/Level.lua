@@ -123,7 +123,7 @@ function Level.new(world, bgLayer, fgLayer, overlayLayer, assets)
 end
 
 function Level:nextLevel()
-  self:reload(self.levelIndex_ + 1,
+  self:reload((self.levelIndex_ % #settings.levels) + 1,
               settings.world.new_level_fade_color,
               settings.world.new_level_fade_time)
 end
@@ -329,7 +329,7 @@ function Level:addText(def)
     prop:setPriority(settings.priorities.hud)
     prop:setColor(0, 0, 0, 0)
     self.overlayLayer:insertProp(prop)
-    defer(0.5 * (k - 1),
+    defer(2.4 * (k - 1),
           function()
             prop:seekColor(0.8, 0.8, 0.8, 0.8, 2.0, MOAIEaseType.EASE_OUT)
             defer(3.0, function()
@@ -363,7 +363,7 @@ function Level:showGameOver()
   prop:setDeck(self.assets.game_over_text)
   prop:setPriority(settings.priorities.hud)
   prop:setColor(0, 0, 0, 0)
-  defer(2.0, function()
+  defer(1.0, function()
     prop:seekColor(0.8, 0.8, 0.8, 1.0, 1.0, MOAIEaseType.EASE_IN)
     defer(0.5, function()
       prop:seekColor(0.5, 0.5, 0.5, 1.0, 1.0, MOAIEaseType.SMOOTH)

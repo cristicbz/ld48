@@ -142,7 +142,7 @@ function Swimmer.new(cell, assets)
       MOAITimer.EVENT_TIMER_LOOP,
       function()
         self.sprite_:setIndex(
-            (self.sprite_:getIndex() + 1) % opts.anim_frames + 1);
+            (self.sprite_:getIndex() % opts.anim_frames) + 1)
       end)
   self.animTimer_:setSpeed(self.idleScale_)
   self.animTimer_:start()
