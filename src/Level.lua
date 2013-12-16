@@ -197,7 +197,7 @@ function Level:reload()
       end
       if v.link == "glowalgae_red_on.png" then
         Glower.new(self.globalCell, settings.entities.red_algae_glower,
-                   redAlgaeOnDeck, redAlgaeOffDeck, k, v):setGlowing(true)
+                   redAlgaeOnDeck, redAlgaeOffDeck, k, v)
       else
         Glower.new(self.globalCell, settings.entities.algae_glower,
                    algaeOnDeck, algaeOffDeck, k, v)
