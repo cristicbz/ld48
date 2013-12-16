@@ -38,8 +38,10 @@ function Game.new()
   self.viewport:setScale(Game.kScreenWidth, 0)
   self.viewport:setSize(Game.kScreenPixelWidth, Game.kScreenPixelHeight)
   
-  MOAIUntzSystem.initialize()
-  MOAIUntzSystem.setVolume(1.0)
+  if not settings.debug.no_sound then
+    MOAIUntzSystem.initialize()
+    MOAIUntzSystem.setVolume(1.0)
+  end
 
   -- Create assets
   self.assets = Assets.new()

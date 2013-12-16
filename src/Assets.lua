@@ -34,13 +34,38 @@ function Assets.new()
   self.cosmetics = MOAITexture.new()
   self.cosmetics:load(settings.entities.cosmetics.texture_path)
 
-  self.music = MOAIUntzSound.new()
-  self.music:load(settings.sounds.music_path)
-  self.music:setVolume(settings.sounds.music_volume)
+  if not settings.debug.no_sound then
+    self.music = MOAIUntzSound.new()
+    self.music:load(settings.sounds.music_path)
+    self.music:setVolume(settings.sounds.music_volume)
 
-  self.throw_sound = MOAIUntzSound.new()
-  self.throw_sound:load(settings.sounds.throw_path)
-  self.throw_sound:setVolume(settings.sounds.throw_volume)
+    self.throw_sound = MOAIUntzSound.new()
+    self.throw_sound:load(settings.sounds.throw_path)
+    self.throw_sound:setVolume(settings.sounds.throw_volume)
+
+    self.breathe_sound = MOAIUntzSound.new()
+    self.breathe_sound:load(settings.sounds.breathe_path)
+    self.breathe_sound:setVolume(settings.sounds.breathe_volume)
+
+    self.kill_sound = MOAIUntzSound.new()
+    self.kill_sound:load(settings.sounds.kill_path)
+    self.kill_sound:setVolume(settings.sounds.kill_volume)
+  end
+
+  self.swimmer_gibs = MOAIGfxQuadDeck2D.new()
+  self.swimmer_gibs:setTexture(settings.entities.swimmer_gibs.texture_path)
+  local tiles = settings.entities.swimmer_gibs.tiles
+  local n_gibs = #tiles
+  local scale = settings.entities.swimmer_gibs.tile_scale
+  self.swimmer_gibs:reserve(n_gibs)
+  for i = 1, n_gibs do
+    local tile = tiles[i]
+    local x, y = tile[1] * scale[1], tile[2] * scale[2]
+    local w, h = tile[3] * scale[1], tile[4] * scale[2]
+
+    self.swimmer_gibs:setUVRect(i, x, y + h, x + w, y)
+    self.swimmer_gibs:setRect(i, -w / 2, -h, w / 2, h)
+  end
 
   return self
 end

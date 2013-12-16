@@ -17,6 +17,7 @@ settings = {
   debug = {
     show_lines = false,
     disable_lightmap = false,
+    no_sound = false,
   },
 
   priorities = {
@@ -100,6 +101,27 @@ settings = {
       light_color = { 1.0, 0.4, 0.4, 0.2 },
     },
 
+    swimmer_gibs = {
+      texture_path = "assets/chunks.png",
+      sprite_scale = 3,
+      collision_scale = 0.5,
+      restitution = 0.1,
+      friction = 0.5,
+      mass = 0.5,
+      tile_scale = {1/64, 1/128},
+      tiles = {
+        {29,54,32,31},
+        {36,87,23,25},
+        {41,32,21,20},
+        {41,2,21,28},
+        {36,114,24,12},
+        {2,2,37,39},
+        {2,94,32,32},
+        {2,43,25,49},
+      },
+    },
+
+
     cosmetics = {
       texture_path = "assets/algae.png",
       link_to_uv = {
@@ -115,7 +137,13 @@ settings = {
     music_volume = 1.0,
 
     throw_path  = "assets/throw.ogg",
-    throw_volume = 0.3,
+    throw_volume = 0.5,
+
+    kill_path  = "assets/death.ogg",
+    kill_volume = 0.9,
+
+    breathe_path  = "assets/breathe.ogg",
+    breathe_volume = 0.1,
   },
 
   effects = {
@@ -129,6 +157,10 @@ settings = {
     {
       definition_path = "assets/l1.level",
       background = "assets/level1.png",
+    },
+    {
+      definition_path = "assets/l2.level",
+      background = "assets/level2.png",
     }
   },
 

@@ -113,20 +113,23 @@ function Level.new(world, bgLayer, fgLayer, overlayLayer, assets)
 
   self.bodyLookup = ActiveSet.new()
 
-  self.music = assets.music
-  self.music:setLooping(true)
-  self.music:play()
+  if not settings.debug.no_sound then
+    self.music = assets.music
+    self.music:setLooping(true)
+    self.music:play()
+  end
 
   return self
 end
 
 function Level:nextLevel()
-  self:reload(self.levelIndex_,
+  self:reload(self.levelIndex_ + 1,
               settings.world.new_level_fade_color,
               settings.world.new_level_fade_time)
 end
 
 function Level:reload(newIndex, fadeColor, fadeTime)
+  print(newIndex)
   if not fadeColor then fadeColor = settings.world.death_fade_color end
   if not fadeTime then fadeTime = settings.world.death_fade_time end
   if not newIndex then newIndex = self.levelIndex_ end

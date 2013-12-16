@@ -1,3 +1,45 @@
+Gib = setmetatable({}, {__index = DynamicEntity})
+
+function Gib.new(cell, deck, opts, idx)
+  local self = setmetatable(DynamicEntity.new(cell), {__index = Gib})
+
+  local body = self:createBody_(MOAIBox2DBody.DYNAMIC)
+
+  local tile = opts.tiles[idx]
+  local scale = {opts.tile_scale[1] * opts.sprite_scale,
+                 opts.tile_scale[2] * opts.sprite_scale}
+  local x, y = tile[1] * scale[1], tile[2] * scale[2]
+  local w, h = tile[3] * scale[1], tile[4] * scale[2] * 2
+  self.fixture = self.body:addRect(-w/2 * opts.collision_scale,
+                                   -h/2 * opts.collision_scale,
+                                    w/2 * opts.collision_scale,
+                                    h/2 * opts.collision_scale)
+  self.dragCoefficient = 0.5 * (0.47) * (w + h) * .5 
+
+  self.fixture:setRestitution(opts.restitution)
+  self.fixture:setFriction(opts.friction)
+  self.fixture:setDensity(opts.mass / (w * h))
+  self.body:resetMassData()
+
+  self.layer_ = cell.fgLayer
+
+  self.prop_ = MOAIProp2D.new()
+  self.prop_:setDeck(deck)
+  self.prop_:setColor(1,1,1,1)
+  self.prop_:setPriority(settings.priorities.foreground)
+  self.prop_:setIndex(idx)
+  self.prop_:setScl(opts.sprite_scale, opts.sprite_scale)
+  self.prop_:setParent(body)
+  self.layer_:insertProp(self.prop_)
+
+
+  return self
+end
+
+function Gib:destroy()
+  self.layer_:removeProp(self.prop_)
+  DynamicEntity.destroy(self)
+end
 
 Swimmer = setmetatable({}, {__index = DynamicEntity})
 
@@ -20,6 +62,10 @@ function Swimmer.new(cell, assets)
   self.offsetY_ = opts.collision_offset_y
 
   self.throwSound_ = assets.throw_sound
+  self.breatheSound_ = assets.breathe_sound
+  self.killSound_ = assets.kill_sound
+  self.breatheSound_:setLooping(true)
+  self.breatheSound_:play()
 
   self.sprite_ = MOAIProp2D.new()
   self.sprite_:setDeck(assets.swimmer)
@@ -67,6 +113,9 @@ function Swimmer.new(cell, assets)
 
   self.lightBall_ = LightBall.new(cell)
 
+  self.cell_ = cell
+  self.gibDeck_ = assets.swimmer_gibs
+
   return self
 end
 
@@ -75,6 +124,19 @@ function Swimmer:getLayer()
 end
 
 function Swimmer:kill()
+  local px, py = self.body:getWorldCenter()
+  self.lightBall_:launch(px, py, randomf(-0.1, 0.1), randomf(-0.1, 0.1))
+  for i = 1, 8 do
+    local gib = Gib.new(self.cell_, self.gibDeck_, settings.entities.swimmer_gibs, i)
+    local angle  = randomf(0, 360)
+    local gx, gy = px + randomf(-.5, .5), py + randomf(-.5, .5), angle
+    gib.body:setTransform(gx, gy)
+    gib.body:applyLinearImpulse((gx - px)*.1, (gy - py)*.1)
+    gib.body:setAngularDamping(20)
+    self.killSound_:play()
+    self.breatheSound_:stop()
+  end
+
   self:destroy()
 end
 
@@ -122,9 +184,10 @@ function Swimmer:launchLightBallTo(x, y)
   if d < 0.01 or self.lightBall_:isEnabled() then return end
   vx = vx / d * self.launcherStrength_
   vy = vy / d * self.launcherStrength_
-  self.throwSound_:stop();
-  self.throwSound_:setPosition(0)
-  self.throwSound_:play();
+  if not settings.debug.no_sound then
+    self.throwSound_:stop();
+    self.throwSound_:play();
+  end
   self.lightBall_:launch(px, py, vx, vy)
   self.body:applyLinearImpulse(-vx * self.recoilStrength_,
                                -vy * self.recoilStrength_)
