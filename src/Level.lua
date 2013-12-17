@@ -182,7 +182,7 @@ function Level:reload(newIndex, fadeColor, fadeTime)
     fader:setColor(fadeColor[1], fadeColor[2], fadeColor[3])
   end
 
-  if newIndex == #settings.levels then
+  if newIndex == #settings.levels + 1 then
     MOAICoroutine.blockOnAction(
         fader:seekColor(0,0,0,1, 4.0, MOAIEaseType.SMOOTH))
     self:showEndText()
