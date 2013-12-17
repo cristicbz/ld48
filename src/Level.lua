@@ -123,7 +123,7 @@ function Level.new(world, bgLayer, fgLayer, overlayLayer, assets)
 end
 
 function Level:nextLevel()
-  self:reload((self.levelIndex_ % #settings.levels) + 1,
+  self:reload(self.levelIndex_ + 1,
               settings.world.new_level_fade_color,
               settings.world.new_level_fade_time)
 end
@@ -180,6 +180,13 @@ function Level:reload(newIndex, fadeColor, fadeTime)
     self.fgLayer:clear()
   else
     fader:setColor(fadeColor[1], fadeColor[2], fadeColor[3])
+  end
+
+  if newIndex == #settings.levels then
+    MOAICoroutine.blockOnAction(
+        fader:seekColor(0,0,0,1, 4.0, MOAIEaseType.SMOOTH))
+    self:showEndText()
+    return
   end
 
   self.globalCell = LevelCell.new(self)
@@ -329,17 +336,42 @@ function Level:addText(def)
     prop:setPriority(settings.priorities.hud)
     prop:setColor(0, 0, 0, 0)
     self.overlayLayer:insertProp(prop)
-    defer(2.4 * (k - 1),
+    local m = 0.0
+    if k == 4 then m = 6 end;
+    defer(2.4 * (k - 1) + m,
           function()
             prop:seekColor(0.8, 0.8, 0.8, 0.8, 2.0, MOAIEaseType.EASE_OUT)
             defer(3.0, function()
-              prop:seekColor(0.6, 0.6, 0.6, 0.6, 1.0, MOAIEaseType.SMOOTH)
+              if k ~= 4 then
+                prop:seekColor(0.6, 0.6, 0.6, 0.6, 1.0, MOAIEaseType.SMOOTH)
+              else
+                prop:seekColor(0.3, 0.3, 0.3, 0.3, 4.0, MOAIEaseType.SMOOTH)
+              end
             end)
           end)
 
     self.textProps_[k] = prop
   end
+end
 
+function Level:showEndText()
+  local prop = MOAIProp2D.new()
+  prop:setDeck(self.assets.thankyou_text)
+  prop:setLoc(0, 10)
+  prop:seekLoc(-10, 10, 4.0, MOAIEaseType.EASE_IN)
+  prop:setPriority(1000)
+  prop:setColor(0, 0, 0, 0)
+  self.overlayLayer:insertProp(prop)
+  MOAICoroutine.blockOnAction(prop:seekColor(0.8, 0.8, 0.8, 1.0, 3.0, MOAIEaseType.SMOOTH))
+
+  prop = MOAIProp2D.new()
+  prop:setDeck(self.assets.vote_text)
+  prop:setLoc(0, -10)
+  prop:seekLoc(10, -10, 4.0, MOAIEaseType.EASE_IN)
+  prop:setPriority(1000)
+  prop:setColor(0, 0, 0, 0)
+  self.overlayLayer:insertProp(prop)
+  prop:seekColor(0.8, 0.8, 0.8, 1.0, 4.0, MOAIEaseType.SMOOTH)
 end
 
 function Level:removeText()

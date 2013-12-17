@@ -159,6 +159,18 @@ settings = {
       texture_path = "assets/gameover-text.png",
       width = 267,
       height = 44,
+    },
+
+    thankyou_text = {
+      texture_path = "assets/thankyou-text.png",
+      width = 432,
+      height = 49,
+    },
+
+    vote_text = {
+      texture_path = "assets/vote-text.png",
+      width = 415,
+      height = 47,
     }
   },
 

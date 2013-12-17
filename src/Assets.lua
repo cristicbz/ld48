@@ -78,5 +78,17 @@ function Assets.new()
   self.game_over_text:setTexture(settings.effects.game_over_text.texture_path)
   self.game_over_text:setRect( -width / 2, -height / 2, width / 2, height / 2)
 
+  local width = settings.effects.thankyou_text.width * Game.kPixelToWorld
+  local height = settings.effects.thankyou_text.height * Game.kPixelToWorld
+  self.thankyou_text = MOAIGfxQuad2D.new()
+  self.thankyou_text:setTexture(settings.effects.thankyou_text.texture_path)
+  self.thankyou_text:setRect( -width / 2, -height / 2, width / 2, height / 2)
+
+  local width = settings.effects.vote_text.width * Game.kPixelToWorld
+  local height = settings.effects.vote_text.height * Game.kPixelToWorld
+  self.vote_text = MOAIGfxQuad2D.new()
+  self.vote_text:setTexture(settings.effects.vote_text.texture_path)
+  self.vote_text:setRect( -width / 2, -height / 2, width / 2, height / 2)
+
   return self
 end
