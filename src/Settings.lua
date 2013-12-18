@@ -141,7 +141,7 @@ settings = {
     kill_volume = 0.9,
 
     breathe_path  = "assets/breathe.ogg",
-    breathe_volume = 0.1,
+    breathe_volume = 0.17,
   },
 
   effects = {
