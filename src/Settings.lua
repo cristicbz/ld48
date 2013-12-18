@@ -63,7 +63,7 @@ settings = {
     light_ball = {
       texture_path = "assets/throwable.png",
       sprite_size = 2.0,
-      collision_ratio = 0.3125,
+      collision_ratio = 0.3125*1.5,
       mass = 4.0,
       restitution = 0.8,
       friction = 0.0,
@@ -189,6 +189,11 @@ settings = {
       definition_path = "assets/l2.level",
       background = "assets/level2.png",
       outline = "assets/l2-outline.png",
+    },
+    {
+      definition_path = "assets/l3.level",
+      background = "assets/level3.png",
+      outline = "assets/l3-outline.png",
     }
   },
 
