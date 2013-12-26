@@ -102,6 +102,11 @@ def finalize_coords(xy, opts):
 def finalize_scale(scale, opts):
   return scale / opts['dims'].real * opts['scale']
 
+def link_to_subclass(link):
+  subclass = link[link.rfind('/') + 1:]
+  subclass = subclass[:subclass.find('.')]
+  return subclass
+
 def parse_element(element, objects, transform, opts):
   obj = {}
   transform = multiply_transforms(transform,
@@ -133,10 +138,10 @@ def parse_element(element, objects, transform, opts):
   elif element.tag == RECT_TAG or element.tag == IMAGE_TAG:
     poly = transform_many(transform, rect_to_polygon(element, True))
     obj['poly'] = finalize_coords(poly, opts)
-    subclass = element.get(LINK_ATTR)
-    script = element.find(DESC_TAG)
-    if subclass is not None: obj['subclass'] = subclass
-    if script is not None: obj['script'] = script.text
+    link = element.get(LINK_ATTR)
+    desc = element.find(DESC_TAG)
+    if link is not None: obj['subclass'] = link_to_subclass(link)
+    if desc is not None: obj['script'] = desc.text
 
   if obj: objects.append(obj)
 
@@ -174,10 +179,10 @@ if __name__ == '__main__':
   parser.add_argument('filename', metavar='FILE', type=str, nargs=1,
       help='SVG file to convert')
 
-  parser.add_argument('--refinement', type=float, nargs=1, default=18,
+  parser.add_argument('--refinement', type=float, default=18,
       help='Pixel distance between two consecutive points on a curve.')
 
-  parser.add_argument('--width', type=float, nargs=1, default=100.0,
+  parser.add_argument('--width', type=float, default=100.0,
       help='The width of the screen to which to scale the world coordinates.')
 
   args = parser.parse_args()

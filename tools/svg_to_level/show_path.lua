@@ -28,7 +28,7 @@ else
         body:addChain(object.poly)
         for iCoord = 1, #object.poly / 2 do
           body:addCircle(
-              object.poly[iCoord * 2 - 1], object.poly[iCoord * 2], 1.0)
+              object.poly[iCoord * 2 - 1], object.poly[iCoord * 2], 0.2)
         end
       elseif object.circle then
         body:addCircle(unpack(object.circle))
