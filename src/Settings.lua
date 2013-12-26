@@ -17,7 +17,7 @@ settings = {
   debug = {
     show_lines = false,
     disable_lightmap = false,
-    no_sound = false,
+    no_sound = true,
   },
 
   priorities = {
@@ -74,8 +74,8 @@ settings = {
 
     goal = {
       activate_radius = 4.0,
-      light_scale = 2.0,
-      light_color = {0.0, 0.8, 1.0, 1.0},
+      light_scale = 1.5,
+      light_color = {0.0, 0.2, 1.0, 0.8},
       fade_time_win = 1.0,
       fade_time_no_win = 2.0,
     },
@@ -95,8 +95,8 @@ settings = {
     green_algae_glower = {
       texture_path = "assets/glowers.png",
       activate_radius = 6.0,
-      light_scale = 1.3,
-      light_color = { 0.1, 1.0, 0.6, 0.15 },
+      light_scale = 0.9,
+      light_color = { 0.1, 1.0, 0.6, 0.35 },
       off_uv_quad = { 0.0, 0.5, 0.5, 0.0 },
       on_uv_quad = { 0.5, 0.5, 1.0, 0.0 },
     },
@@ -104,8 +104,8 @@ settings = {
     red_algae_glower = {
       texture_path = "assets/glowers.png",
       activate_radius = 6.0,
-      light_scale = 1.3,
-      light_color = { 1.0, 0.4, 0.4, 0.2 },
+      light_scale = 0.9,
+      light_color = { 1.0, 0.4, 0.4, 0.4 },
       off_uv_quad = { 0.0, 1.0, 0.5, 0.5 },
       on_uv_quad = { 0.5, 1.0, 1.0, 0.5 },
     },

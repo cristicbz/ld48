@@ -120,6 +120,22 @@ function Level.new(world, bgLayer, fgLayer, overlayLayer, assets)
     self.music:play()
   end
 
+  self.bgDeck_ = MOAIGfxQuad2D.new()
+  self.outDeck_ = MOAIGfxQuad2D.new()
+  self.bgDeck_:setRect(-Game.kScreenWidth / 2, -Game.kScreenHeight / 2,
+                       Game.kScreenWidth / 2, Game.kScreenHeight / 2)
+  self.outDeck_:setRect(-Game.kScreenWidth / 2, -Game.kScreenHeight / 2,
+                         Game.kScreenWidth / 2, Game.kScreenHeight / 2)
+  self.background_ = MOAIProp2D.new();
+  self.background_:setDeck(self.bgDeck_)
+  self.background_:setPriority(settings.priorities.background)
+  self.bgLayer:insertProp(self.background_)
+
+  self.outline_ = MOAIProp2D.new();
+  self.outline_:setDeck(self.outDeck_)
+  self.outline_:setPriority(settings.priorities.lightmap - 1)
+  self.overlayLayer:insertProp(self.outline_)
+
   local t = MOAITimer.new()
   t:setSpan(1.0)
   t:setMode(MOAITimer.LOOP)
@@ -131,9 +147,17 @@ function Level.new(world, bgLayer, fgLayer, overlayLayer, assets)
 end
 
 function Level:nextLevel()
-  self:reload(self.levelIndex_ + 1,
-              settings.world.new_level_fade_color,
-              settings.world.new_level_fade_time)
+  local nextIndex = self.defIndex_ + 1
+  if nextIndex == #settings.levels + 1 then
+    self:fadeScreenIn(settings.world.new_level_fade_color,
+                      settings.world.new_level_fade_time)
+    self:endOfGameHack()
+  else
+    self:fadeScreenIn(settings.world.new_level_fade_color,
+                      settings.world.new_level_fade_time)
+    self:loadByIndex(nextIndex)
+    self:fadeScreenOut(settings.world.new_level_fade_time)
+  end
 end
 
 function Level:lose()
@@ -143,98 +167,119 @@ function Level:lose()
     local coro = MOAICoroutine.new()
     coro:run(function()
       MOAIInputMgr.device.mouseLeft:setCallback(nil)
-      self:reload()
+      self:restart()
     end)
   end
   MOAIInputMgr.device.mouseLeft:setCallback(callback)
 end
 
-function Level:reload(newIndex, fadeColor, fadeTime)
-  if not fadeColor then fadeColor = settings.world.death_fade_color end
-  if not fadeTime then fadeTime = settings.world.death_fade_time end
-  if not newIndex then newIndex = self.levelIndex_ end
-
-  if not self.bgDeck_ then
-    self.bgDeck_ = MOAIGfxQuad2D.new()
-    self.bgDeck_:setTexture(settings.levels[newIndex].background)
-    self.bgDeck_:setRect(-Game.kScreenWidth / 2, -Game.kScreenHeight / 2,
-                         Game.kScreenWidth / 2, Game.kScreenHeight / 2)
-
-    self.outDeck_ = MOAIGfxQuad2D.new()
-    self.outDeck_:setTexture(settings.levels[newIndex].outline)
-    self.outDeck_:setRect(-Game.kScreenWidth / 2, -Game.kScreenHeight / 2,
-                           Game.kScreenWidth / 2, Game.kScreenHeight / 2)
-    self.background_ = MOAIProp2D.new();
-    self.background_:setDeck(self.bgDeck_)
-    self.background_:setPriority(settings.priorities.background)
-    self.bgLayer:insertProp(self.background_)
-
-    self.outline_ = MOAIProp2D.new();
-    self.outline_:setDeck(self.outDeck_)
-    self.outline_:setPriority(settings.priorities.lightmap - 1)
-    self.overlayLayer:insertProp(self.outline_)
-  end
-
+function Level:fadeScreenIn(color, time)
   local fader = MOAIProp2D.new()
   fader:setDeck(self.assets.fader)
   fader:setPriority(settings.priorities.lightmap + 20)
+
   if self.globalCell then 
     fader:setColor(0, 0, 0, 0)
     self.overlayLayer:insertProp(fader)
     MOAICoroutine.blockOnAction(fader:seekColor(
-        fadeColor[1], fadeColor[2], fadeColor[3], 1.0,
-        fadeTime, MOAIEaseType.EASE_OUT))
-    self.globalCell:destroy()
-    self:removeText()
-    self:removeGameOver()
-    self.fgLayer:clear()
+        color[1], color[2], color[3], 1.0, time, MOAIEaseType.EASE_OUT))
   else
-    fader:setColor(fadeColor[1], fadeColor[2], fadeColor[3])
+    fader:setColor(color[1], color[2], color[3])
   end
 
-  if newIndex == #settings.levels + 1 then
-    MOAICoroutine.blockOnAction(
-        fader:seekColor(0,0,0,1, 4.0, MOAIEaseType.SMOOTH))
-    self:showEndText()
-    return
+  self.fader_ = fader
+end
+
+function Level:fadeScreenOut(time)
+  local fader = self.fader_
+  MOAICoroutine.blockOnAction(fader:seekColor(0, 0, 0, 0, time,
+                                              MOAIEaseType.EASE_OUT))
+  self.overlayLayer:removeProp(fader)
+  self.fader_ = nil
+end
+
+function Level:loadDefinition(index)
+  if not index then
+    index = self.defIndex_
+  else
+   self.defIndex_ = index
   end
 
-  self.globalCell = LevelCell.new(self)
-
-  if newIndex ~= self.levelIndex_ then
-    self.bgDeck_:setTexture(settings.levels[newIndex].background)
-    self.outDeck_:setTexture(settings.levels[newIndex].outline)
-    self.levelIndex_ = newIndex
-  end
-
-  local loader, err = loadfile(settings.levels[newIndex].definition_path)
-  local levelDefinition
+  local loader, err = loadfile(settings.levels[self.defIndex_].definition_path)
+  local def
 
   if loader == nil then
     print('Cannot open level ' .. err)
   else
-    levelDefinition = loader()
+    def = loader()
   end
 
-  local scale = Game.kScreenWidth / levelDefinition.width
+  return def
+end
+
+function Level:clearTransients_()
+  if self.transientCell_ then self.transientCell_:destroy() end
+  self.transientCell_ = LevelCell.new(self, assets)
+end
+
+function Level:restart()
+  local def = self:loadDefinition()
+  local fadeColor = settings.world.death_fade_color
+  local fadeTime = settings.world.death_fade_time
+
+  self:fadeScreenIn(fadeColor, fadeTime)
+  self:removeGameOver()
+  self:clearTransients_()
+  self:createTransients_(def)
+  self:fadeScreenOut(fadeTime)
+
+end
+
+function Level:createTransients_(def)
+  local scale = Game.kScreenWidth / def.width
+  local offsetX, offsetY = -Game.kScreenWidth / 2, -Game.kScreenHeight / 2
+  self.player = Swimmer.new(self.transientCell_, self.assets)
+  self.player.body:setTransform(def.Player.x * scale + offsetX,
+                                def.Player.y * scale + offsetY)
+end
+
+function Level:clearCells_()
+  self.fgLayer:clear()
+  self:removeText()
+  self:clearTransients_()
+  if self.globalCell then self.globalCell:destroy() end
+  self.globalCell = LevelCell.new(self, assets)
+end
+
+function Level:endOfGameHack()
+    MOAICoroutine.blockOnAction(
+        self.fader_:seekColor(0, 0, 0, 1, 4.0, MOAIEaseType.SMOOTH))
+    self:showEndText()
+end
+
+function Level:loadByIndex(newIndex)
+  self:clearCells_()
+  self.bgDeck_:setTexture(settings.levels[newIndex].background)
+  self.outDeck_:setTexture(settings.levels[newIndex].outline)
+
+  local def = self:loadDefinition(newIndex)
+  local scale = Game.kScreenWidth / def.width
   local offsetX = -Game.kScreenWidth / 2
   local offsetY = -Game.kScreenHeight / 2
 
-  self.player = Swimmer.new(self.globalCell, self.assets)
-  self.player.body:setTransform(
-    levelDefinition.Player.x * scale + offsetX,
-    levelDefinition.Player.y * scale + offsetY)
-  
+  self:createTransients_(def)
   self.goal = Goal.new(self.globalCell, settings.entities.goal,
-                       levelDefinition.Goal.x * scale + offsetX,
-                       levelDefinition.Goal.y * scale + offsetY)
+                       def.Goal.x * scale + offsetX,
+                       def.Goal.y * scale + offsetY)
+
+  ObstaclePath.new(self.globalCell, def.Collisions, scale, offsetX, offsetY)
 
   local image_to_entity = {}
   image_to_entity["spikycoral.png"] = "coral_killer"
   image_to_entity["rockshards.png"] = "rock_killer"
 
   local killer_decks = {}
-  local numDangers = #levelDefinition.Dangers
+  local numDangers = #def.Dangers
   for k, v in pairs(image_to_entity) do
     local deck = MOAIGfxQuadDeck2D.new()
     deck:reserve(numDangers)
@@ -246,7 +291,7 @@ function Level:reload(newIndex, fadeColor, fadeTime)
     self.player:explode()
   end
 
-  for k, v in pairs(levelDefinition.Dangers) do
+  for k, v in pairs(def.Dangers) do
     local entity_name = image_to_entity[v.link]
     if entity_name then
       local deck = killer_decks[entity_name]
@@ -259,12 +304,12 @@ function Level:reload(newIndex, fadeColor, fadeTime)
     end
   end
 
-  local numAlgae = #levelDefinition.Algae + #levelDefinition.LitAlgae
+  local numAlgae = #def.Algae + #def.LitAlgae
   local algaeDeck = MOAIGfxQuadDeck2D.new()
   algaeDeck:setTexture(self.assets.glowers)
   algaeDeck:reserve(numAlgae * Glower.kIndicesRequired)
   local n
-  for k, v in pairs(levelDefinition.Algae) do
+  for k, v in pairs(def.Algae) do
       local opts
 
       for i = 1,4 do
@@ -283,7 +328,7 @@ function Level:reload(newIndex, fadeColor, fadeTime)
       n = k
   end
 
-  for k, v in pairs(levelDefinition.LitAlgae) do
+  for k, v in pairs(def.LitAlgae) do
       for i = 1,4 do
         v[i].x = scale * v[i].x + offsetX
         v[i].y = scale * v[i].y + offsetY
@@ -295,9 +340,9 @@ function Level:reload(newIndex, fadeColor, fadeTime)
   end
 
   local cosmeticsDeck = MOAIGfxQuadDeck2D.new()
-  cosmeticsDeck:reserve(#levelDefinition.Cosmetics)
+  cosmeticsDeck:reserve(#def.Cosmetics)
   cosmeticsDeck:setTexture(self.assets.cosmetics)
-  for k, v in pairs(levelDefinition.Cosmetics) do
+  for k, v in pairs(def.Cosmetics) do
       for i = 1,4 do
         v[i].x = scale * v[i].x + offsetX
         v[i].y = scale * v[i].y + offsetY
@@ -310,14 +355,7 @@ function Level:reload(newIndex, fadeColor, fadeTime)
       self.fgLayer:insertProp(prop)
   end
 
-  self:addText(levelDefinition)
-
-  ObstaclePath.new(
-      self.globalCell, levelDefinition.Collisions, scale, offsetX, offsetY)
-
-  MOAICoroutine.blockOnAction(fader:seekColor(0, 0, 0, 0, fadeTime,
-                                              MOAIEaseType.EASE_OUT))
-  self.overlayLayer:removeProp(fader)
+  self:addText(def)
 end
 
 function Level:addText(def)
@@ -363,7 +401,7 @@ end
 function Level:showEndText()
   local prop = MOAIProp2D.new()
   prop:setDeck(self.assets.thankyou_text)
-  prop:setLoc(0, 10)
+  prop:setLoc(-9, 10)
   prop:seekLoc(-10, 10, 4.0, MOAIEaseType.EASE_IN)
   prop:setPriority(1000)
   prop:setColor(0, 0, 0, 0)
@@ -372,7 +410,7 @@ function Level:showEndText()
 
   prop = MOAIProp2D.new()
   prop:setDeck(self.assets.vote_text)
-  prop:setLoc(0, -10)
+  prop:setLoc(9, -10)
   prop:seekLoc(10, -10, 4.0, MOAIEaseType.EASE_IN)
   prop:setPriority(1000)
   prop:setColor(0, 0, 0, 0)

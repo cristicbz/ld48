@@ -48,7 +48,7 @@ function GameState.new( assets, viewport )
   MOAISim.pushRenderPass( self.overlayLayer )
 
   -- Initial update
-  self.level:reload(1)
+  self.level:loadByIndex(1)
   self.camera:setLoc(0, 0)
 
   self:unpause()
