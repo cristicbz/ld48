@@ -3,5 +3,6 @@
 *.png
 *.ttf
 *.swo
+*.pyc
 hosts
 src/rat
