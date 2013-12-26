@@ -148,7 +148,6 @@ function Swimmer.new(cell, assets)
   self.animTimer_:start()
   self.moving_ = false
 
-
   self.moveForce_ = opts.move_force
   self.launcherStrength_ = opts.launcher_strength
   self.recoilStrength_ = opts.recoil_strength

@@ -16,7 +16,8 @@ function Glower.new(cell, opts, deck, startIdx, verts)
       function(phase, a, b, arbiter)
         arbiter:setContactEnabled(false)
         self:setGlowing(true)
-      end, MOAIBox2DArbiter.PRE_SOLVE, settings.collision_masks.collectible)
+      end, MOAIBox2DArbiter.PRE_SOLVE,
+      settings.collision_masks.collectible)
 
   fixture:setFilter(settings.collision_masks.nonlethal,
                     settings.collision_masks.collectible)
@@ -34,6 +35,7 @@ function Glower.new(cell, opts, deck, startIdx, verts)
 
   self.light_ = cell.lightmap:addLight()
   self.lightColor_ = opts.light_color
+  self.lightTime_ = opts.light_time
   local lr, lg, lb, la = unpack(self.lightColor_)
   self.light_:setColor(lr, lg, lb, 0)
   self.light_:setScl(opts.light_scale, opts.light_scale)
@@ -55,17 +57,18 @@ function Glower:setGlowing(glow)
   self.on_ = glow
   
   local lr, lg, lb, la = unpack(self.lightColor_)
+  local lt = self.lightTime_
   if glow then
     self.propOn_:setVisible(true)
     self.light_:setVisible(true)
-    self.propOff_:seekColor(0.0, 0.0, 0.0, 0.0, 1.0, MOAIEaseType.EASE_IN)
-    self.propOn_:seekColor(1.0, 1.0, 1.0, 1.0, 1.0, MOAIEaseType.EASE_IN)
-    self.light_:seekColor(lr, lg, lb, la, 1.0, MOAIEaseType.EASE_IN)
+    self.propOff_:seekColor(0.0, 0.0, 0.0, 0.0, lt, MOAIEaseType.EASE_IN)
+    self.propOn_:seekColor(1.0, 1.0, 1.0, 1.0, lt, MOAIEaseType.EASE_IN)
+    self.light_:seekColor(lr, lg, lb, la, lt, MOAIEaseType.EASE_IN)
   else
     self.propOff_:setVisible(true)
-    self.propOn_:seekColor(0.0, 0.0, 0.0, 0.0, 1.0, MOAIEaseType.EASE_IN)
-    self.light_:seekColor(lr, lg, lb, 0.0, 1.0, MOAIEaseType.EASE_IN)
-    self.propOff_:seekColor(1.0, 1.0, 1.0, 1.0, 1.0, MOAIEaseType.EASE_IN)
+    self.propOn_:seekColor(0.0, 0.0, 0.0, 0.0, lt, MOAIEaseType.EASE_IN)
+    self.light_:seekColor(lr, lg, lb, 0.0, lt, MOAIEaseType.EASE_IN)
+    self.propOff_:seekColor(1.0, 1.0, 1.0, 1.0, lt, MOAIEaseType.EASE_IN)
   end
 end
 

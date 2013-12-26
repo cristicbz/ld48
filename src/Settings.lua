@@ -50,11 +50,11 @@ settings = {
       collision_offset_x = 0.27,
       collision_offset_y = 0.27,
 
-      flashlight_pos = { 1.17, 0.5 },
+      flashlight_pos = { 1.10, 0.5 },
       flashlight_scale = { 0.4, 0.26 },
       flashlight_color = { 1.0, 1.0, 1.0, 0.8 },
 
-      launcher_strength = 14.0,
+      launcher_strength = 10.0,
       anim_frames = 9,
       anim_fps = 9,
       idle_fps_scale = 0.3,
@@ -74,7 +74,7 @@ settings = {
 
     goal = {
       activate_radius = 4.0,
-      light_scale = 1.5,
+      light_scale = 1.0,
       light_color = {0.0, 0.2, 1.0, 0.8},
       fade_time_win = 1.0,
       fade_time_no_win = 2.0,
@@ -95,8 +95,9 @@ settings = {
     green_algae_glower = {
       texture_path = "assets/glowers.png",
       activate_radius = 6.0,
-      light_scale = 0.9,
-      light_color = { 0.1, 1.0, 0.6, 0.35 },
+      light_time = 3.0,
+      light_scale = 1.0,
+      light_color = { 0.1, 1.0, 0.6, 0.25 },
       off_uv_quad = { 0.0, 0.5, 0.5, 0.0 },
       on_uv_quad = { 0.5, 0.5, 1.0, 0.0 },
     },
@@ -104,8 +105,9 @@ settings = {
     red_algae_glower = {
       texture_path = "assets/glowers.png",
       activate_radius = 6.0,
-      light_scale = 0.9,
-      light_color = { 1.0, 0.4, 0.4, 0.4 },
+      light_time = 3.0,
+      light_scale = 1.0,
+      light_color = { 1.0, 0.4, 0.4, 0.25 },
       off_uv_quad = { 0.0, 1.0, 0.5, 0.5 },
       on_uv_quad = { 0.5, 1.0, 1.0, 0.5 },
     },
