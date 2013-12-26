@@ -1,6 +1,8 @@
-Glower = setmetatable({}, { __index = PhysicalEntity })
+Glower = setmetatable({
+  kIndicesRequired = 2,
+}, { __index = PhysicalEntity })
 
-function Glower.new(cell, opts, deckOn, deckOff, idx, verts)
+function Glower.new(cell, opts, deck, startIdx, verts)
   local self = setmetatable(
       PhysicalEntity.new(cell), { __index = Glower })
 
@@ -19,18 +21,16 @@ function Glower.new(cell, opts, deckOn, deckOff, idx, verts)
   fixture:setFilter(settings.collision_masks.nonlethal,
                     settings.collision_masks.collectible)
   
-  self.propOn_ = createPropFromVerts(deckOn, idx, verts)
-  self.propOn_:setBlendMode(MOAIProp.BLEND_NORMAL)
-  deckOn:setUVRect(idx, 0.5, 1.0, 1.0, 0.0)
+
+  deck:setUVRect(startIdx, unpack(opts.off_uv_quad))
+  self.propOff_ = createPropFromVerts(deck, startIdx, verts)
+  self.propOff_:setPriority(settings.priorities.doodads + 1)
+
+  deck:setUVRect(startIdx + 1, unpack(opts.on_uv_quad))
+  self.propOn_ = createPropFromVerts(deck, startIdx + 1, verts)
   self.propOn_:setPriority(settings.priorities.doodads + 1)
   self.propOn_:setColor(0.0, 0.0, 0.0, 0.0)
   self.propOn_:setVisible(false)
-
-  self.propOff_ = createPropFromVerts(deckOff, idx, verts)
-  self.propOff_:setBlendMode(MOAIProp.BLEND_NORMAL)
-  deckOff:setUVRect(idx, 0.0, 1.0, 0.5, 0.0)
-  self.propOff_:setPriority(settings.priorities.doodads + 1)
-  self.propOff_:setColor(1.0, 1.0, 1.0, 1.0)
 
   self.light_ = cell.lightmap:addLight()
   self.lightColor_ = opts.light_color
@@ -46,7 +46,6 @@ function Glower.new(cell, opts, deckOn, deckOff, idx, verts)
   self.layer_ = cell.fgLayer
   self.lightmap_ = cell.lightmap
   self.on_ = false
-  
 
   return self
 end

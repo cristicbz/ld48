@@ -85,7 +85,8 @@ function LevelCell:destroy()
   if self.entities:getObjectCount() > 0 then
     self.entities:callMethod( 'destroy' )
     --self.dynamicSet:clearObjects()
-    if self.entities:getObjectCount()>0 or self.dynamicSet:getObjectCount()>0 then
+    if self.entities:getObjectCount() > 0 or
+       self.dynamicSet:getObjectCount() > 0 then
       print(
         ('LevelCell: Dirty destroy(): (ent %d; dyn %d)'):format(
           self.entities:getObjectCount(),
@@ -119,6 +120,13 @@ function Level.new(world, bgLayer, fgLayer, overlayLayer, assets)
     self.music:play()
   end
 
+  local t = MOAITimer.new()
+  t:setSpan(1.0)
+  t:setMode(MOAITimer.LOOP)
+  t:setListener(MOAITimer.EVENT_TIMER_LOOP,
+                function() print(MOAIRenderMgr.getPerformanceDrawCount()) end)
+  t:start()
+
   return self
 end
 
@@ -145,11 +153,13 @@ function Level:reload(newIndex, fadeColor, fadeTime)
   if not fadeColor then fadeColor = settings.world.death_fade_color end
   if not fadeTime then fadeTime = settings.world.death_fade_time end
   if not newIndex then newIndex = self.levelIndex_ end
+
   if not self.bgDeck_ then
     self.bgDeck_ = MOAIGfxQuad2D.new()
     self.bgDeck_:setTexture(settings.levels[newIndex].background)
     self.bgDeck_:setRect(-Game.kScreenWidth / 2, -Game.kScreenHeight / 2,
                          Game.kScreenWidth / 2, Game.kScreenHeight / 2)
+
     self.outDeck_ = MOAIGfxQuad2D.new()
     self.outDeck_:setTexture(settings.levels[newIndex].outline)
     self.outDeck_:setRect(-Game.kScreenWidth / 2, -Game.kScreenHeight / 2,
@@ -250,32 +260,26 @@ function Level:reload(newIndex, fadeColor, fadeTime)
   end
 
   local numAlgae = #levelDefinition.Algae + #levelDefinition.LitAlgae
-  local algaeOnDeck = MOAIGfxQuadDeck2D.new()
-  local algaeOffDeck = MOAIGfxQuadDeck2D.new()
-  local redAlgaeOnDeck = MOAIGfxQuadDeck2D.new()
-  local redAlgaeOffDeck = MOAIGfxQuadDeck2D.new()
-  algaeOnDeck:setTexture(self.assets.algae_glower)
-  algaeOffDeck:setTexture(self.assets.algae_glower)
-  redAlgaeOnDeck:setTexture(self.assets.red_algae_glower)
-  redAlgaeOffDeck:setTexture(self.assets.red_algae_glower)
-
-  algaeOnDeck:reserve(numAlgae)
-  algaeOffDeck:reserve(numAlgae)
-  redAlgaeOnDeck:reserve(numAlgae)
-  redAlgaeOffDeck:reserve(numAlgae)
+  local algaeDeck = MOAIGfxQuadDeck2D.new()
+  algaeDeck:setTexture(self.assets.glowers)
+  algaeDeck:reserve(numAlgae * Glower.kIndicesRequired)
   local n
   for k, v in pairs(levelDefinition.Algae) do
+      local opts
+
       for i = 1,4 do
         v[i].x = scale * v[i].x + offsetX
         v[i].y = scale * v[i].y + offsetY
       end
+
       if v.link == "glowalgae_red_on.png" then
-        Glower.new(self.globalCell, settings.entities.red_algae_glower,
-                   redAlgaeOnDeck, redAlgaeOffDeck, k, v)
+        opts = settings.entities.red_algae_glower
       else
-        Glower.new(self.globalCell, settings.entities.algae_glower,
-                   algaeOnDeck, algaeOffDeck, k, v)
+        opts = settings.entities.green_algae_glower
       end
+
+      Glower.new(self.globalCell, opts, algaeDeck,
+                 (k - 1) * Glower.kIndicesRequired + 1, v)
       n = k
   end
 
@@ -284,8 +288,10 @@ function Level:reload(newIndex, fadeColor, fadeTime)
         v[i].x = scale * v[i].x + offsetX
         v[i].y = scale * v[i].y + offsetY
       end
-      Glower.new(self.globalCell, settings.entities.algae_glower,
-                 algaeOnDeck, algaeOffDeck, k + n, v):setGlowing(true)
+
+      Glower.new(self.globalCell, settings.entities.green_algae_glower,
+                 algaeDeck, (k + n - 1) * Glower.kIndicesRequired + 1, v)
+          :setGlowing(true)
   end
 
   local cosmeticsDeck = MOAIGfxQuadDeck2D.new()

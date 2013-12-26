@@ -5,7 +5,7 @@ settings = {
     screen_pixel_width = 1280,
     screen_pixel_height = 720,
     gravity = -0.02,
-    global_drag = 0.165,
+    global_drag = 0.195,
 
     new_level_fade_color = {1, 1, 1, 1},
     new_level_fade_time = 0.7,
@@ -40,11 +40,11 @@ settings = {
     swimmer = {
       texture_path = "assets/swim-anim.png",
       size = 1.67,
-      mass = 1.0,
+      mass = 0.5,
       restitution = 0.1,
       friction = 0.05,
       move_force = 5.0,
-      recoil_strength = 0.3,
+      recoil_strength = 0.16,
 
       collision_scale = 0.67,
       collision_offset_x = 0.27,
@@ -54,7 +54,7 @@ settings = {
       flashlight_scale = { 0.4, 0.26 },
       flashlight_color = { 1.0, 1.0, 1.0, 0.8 },
 
-      launcher_strength = 10.0,
+      launcher_strength = 14.0,
       anim_frames = 9,
       anim_fps = 9,
       idle_fps_scale = 0.3,
@@ -63,7 +63,7 @@ settings = {
     light_ball = {
       texture_path = "assets/throwable.png",
       sprite_size = 2.0,
-      collision_ratio = 0.3125*1.5,
+      collision_ratio = 0.3125 * 1.5,
       mass = 4.0,
       restitution = 0.8,
       friction = 0.0,
@@ -92,18 +92,22 @@ settings = {
       collision_width  = 52 / 64,
     },
 
-    algae_glower = {
-      texture_path = "assets/glowalgae.png",
+    green_algae_glower = {
+      texture_path = "assets/glowers.png",
       activate_radius = 6.0,
       light_scale = 1.3,
       light_color = { 0.1, 1.0, 0.6, 0.15 },
+      off_uv_quad = { 0.0, 0.5, 0.5, 0.0 },
+      on_uv_quad = { 0.5, 0.5, 1.0, 0.0 },
     },
 
     red_algae_glower = {
-      texture_path = "assets/glowalgae_red.png",
+      texture_path = "assets/glowers.png",
       activate_radius = 6.0,
       light_scale = 1.3,
       light_color = { 1.0, 0.4, 0.4, 0.2 },
+      off_uv_quad = { 0.0, 1.0, 0.5, 0.5 },
+      on_uv_quad = { 0.5, 1.0, 1.0, 0.5 },
     },
 
     swimmer_gibs = {
