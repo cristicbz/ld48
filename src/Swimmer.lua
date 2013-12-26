@@ -260,6 +260,7 @@ end
 function Swimmer:launchLightBallTo(x, y)
   local px, py = self.body:getWorldCenter()
   local vx, vy = x - px, y - py
+  local svx, svy = self.body:getLinearVelocity()
   local d = math.sqrt(vx * vx + vy * vy)
   if d < 0.01 or self.lightBall_:isEnabled() then return end
   vx = vx / d * self.launcherStrength_
@@ -268,7 +269,7 @@ function Swimmer:launchLightBallTo(x, y)
     self.throwSound_:stop();
     self.throwSound_:play();
   end
-  self.lightBall_:launch(px, py, vx, vy)
+  self.lightBall_:launch(px, py, svx + vx, svy + vy)
   self.body:applyLinearImpulse(-vx * self.recoilStrength_,
                                -vy * self.recoilStrength_)
 end
