@@ -144,4 +144,4 @@ if __name__ == '__main__':
   args = parser.parse_args()
   opts = { 'filename': args.filename[0], 'refinement': args.refinement }
   with open('path.lua', 'w') as f:
-    f.write(level_to_lua(parse_svg(args['filename'], opts)))
+    f.write(level_to_lua(parse_svg(opts['filename'], opts)))
