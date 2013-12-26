@@ -9,12 +9,22 @@ import xml.etree.ElementTree as etree
 
 INKSCAPE_URI = "{http://www.inkscape.org/namespaces/inkscape}"
 SVG_URI = "{http://www.w3.org/2000/svg}"
+SODIPODI_URI = "{http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd}"
+XLINK_URI="{http://www.w3.org/1999/xlink}"
 
 GROUP_TAG = SVG_URI + 'g'
 PATH_TAG = SVG_URI + 'path'
 RECT_TAG = SVG_URI + 'rect'
 IMAGE_TAG = SVG_URI + 'image'
+DESC_TAG = SVG_URI + 'desc'
+
 LABEL_ATTR = INKSCAPE_URI + 'label'
+SODITYPE_ATTR = SODIPODI_URI + 'type'
+CX_ATTR = SODIPODI_URI + 'cx'
+CY_ATTR = SODIPODI_URI + 'cy'
+RX_ATTR = SODIPODI_URI + 'rx'
+RY_ATTR = SODIPODI_URI + 'ry'
+LINK_ATTR = XLINK_URI + 'href'
 
 TRANSFORM_RE = re.compile(r'(\w+)\(([^\)]+)\)')
 TRANSFORM_ARGS_RE = re.compile(r'([-\d\.e]+)')
@@ -29,8 +39,7 @@ def parse_transform(transform_string):
     if op == 'translate': return [1.0, 0.0, 0.0, 1.0, args[0], args[1]]
     if op == 'scale': return [args[0], 0.0, 0.0, 0.0, args[1], 0.0]
     if op == 'rotate':
-      ca = math.cos(args[0])
-      sa = math.sin(args[0])
+      ca, sa = math.cos(args[0]), math.sin(args[0])
       rotation = [ca, -sa, 0.0, sa, ca, 0.0]
       if len(args) == 3:
         p = multiply_transforms(to_matrix('translate', args[1:2]), rotation)
@@ -87,21 +96,49 @@ def rect_to_polygon(element, close):
 
 def finalize_coords(xy, opts):
   dims = opts['dims']
-  xy = ((p - dims * .5).conjugate() / dims.real for p in xy)
+  xy = ((p - dims * .5).conjugate() / dims.real * opts['scale'] for p in xy)
   return list(itertools.chain(*((x.real, x.imag) for x in xy)))
 
+def finalize_scale(scale, opts):
+  return scale / opts['dims'].real * opts['scale']
+
 def parse_element(element, objects, transform, opts):
+  obj = {}
   transform = multiply_transforms(transform,
                                   parse_transform(element.get('transform')))
   if element.tag == GROUP_TAG:
-    for child in element: parse_element(child, objects, transform, opts)
-  elif element.tag == PATH_TAG:
-    path = svg.parse_path(element.get('d'))
-    poly = transform_many(transform, path_to_polygon(path, opts))
-    objects.append({'xy': finalize_coords(poly, opts)})
-  elif element.tag == RECT_TAG:
+    for child in element:
+      parse_element(child, objects, transform, opts)
+    return
+
+  if element.tag == PATH_TAG:
+    if element.get(SODITYPE_ATTR) == 'arc':
+      xy = float(element.get(CX_ATTR)) + float(element.get(CY_ATTR)) * 1j
+      rx, ry = float(element.get(RX_ATTR)), float(element.get(RY_ATTR))
+
+      xy = transform_one(transform, xy)
+      rx *= transform[0]
+      ry *= transform[3]
+      radius = (rx + ry) * .5
+      if max(rx, ry) / min(rx, ry) > 1.05:
+        print 'W: Ellipse ' + element.get('id') + ' (%f, %f) will be ' \
+              ' approximated as a circle with radius %f.' % (rx, ry, radius)
+
+      obj['circle'] = finalize_coords([xy], opts)
+      obj['circle'].append(finalize_scale(radius, opts))
+    else:
+      path = svg.parse_path(element.get('d'))
+      poly = transform_many(transform, path_to_polygon(path, opts))
+      obj['poly'] = finalize_coords(poly, opts)
+  elif element.tag == RECT_TAG or element.tag == IMAGE_TAG:
     poly = transform_many(transform, rect_to_polygon(element, True))
-    objects.append({'xy': finalize_coords(poly, opts)})
+    obj['poly'] = finalize_coords(poly, opts)
+    subclass = element.get(LINK_ATTR)
+    script = element.find(DESC_TAG)
+    if subclass is not None: obj['subclass'] = subclass
+    if script is not None: obj['script'] = script.text
+
+  if obj: objects.append(obj)
 
 def parse_svg(filename, opts):
   tree = etree.parse(filename)
@@ -115,8 +152,7 @@ def parse_svg(filename, opts):
     objects = []
     transform = parse_transform(layer_element.get('transform'))
     for child in layer_element: parse_element(child, objects, transform, opts)
-    layer = {}
-    layer['objects'] = objects
+    layer = {'objects': objects}
     level[layer_element.get(LABEL_ATTR).lower()] = layer
 
   return level
@@ -141,7 +177,16 @@ if __name__ == '__main__':
   parser.add_argument('--refinement', type=float, nargs=1, default=18,
       help='Pixel distance between two consecutive points on a curve.')
 
+  parser.add_argument('--width', type=float, nargs=1, default=100.0,
+      help='The width of the screen to which to scale the world coordinates.')
+
   args = parser.parse_args()
-  opts = { 'filename': args.filename[0], 'refinement': args.refinement }
+  opts = {
+      'filename': args.filename[0],
+      'refinement': args.refinement,
+      'scale': args.width
+  }
+
   with open('path.lua', 'w') as f:
     f.write(level_to_lua(parse_svg(opts['filename'], opts)))
+    f.write('\n')

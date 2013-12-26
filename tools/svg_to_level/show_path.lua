@@ -2,7 +2,7 @@
 MOAISim.openWindow('Path', 1280, 720)
 
 local viewport = MOAIViewport.new()
-viewport:setScale(1, 0)
+viewport:setScale(100, 0)
 viewport:setSize(1280, 720)
 
 local layer = MOAILayer2D.new()
@@ -15,7 +15,6 @@ camera:setLoc(0.0, 0.0)
 layer:setCamera(camera)
 
 local world = MOAIBox2DWorld.new()
-world:setUnitsToMeters(0.01)
 layer:setBox2DWorld(world)
 
 local body = world:addBody(MOAIBox2DBody.STATIC)
@@ -25,10 +24,14 @@ if not loader then
 else
   for layerName, layer in pairs(loader()) do
     for iObject, object in pairs(layer.objects) do
-      body:addChain(object.xy)
-      for iCoord = 1, #object.xy / 2 do
-        body:addCircle(
-            object.xy[iCoord * 2 - 1], object.xy[iCoord * 2], 0.005)
+      if object.poly then
+        body:addChain(object.poly)
+        for iCoord = 1, #object.poly / 2 do
+          body:addCircle(
+              object.poly[iCoord * 2 - 1], object.poly[iCoord * 2], 1.0)
+        end
+      elseif object.circle then
+        body:addCircle(unpack(object.circle))
       end
     end
   end
