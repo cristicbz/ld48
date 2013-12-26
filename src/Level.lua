@@ -199,20 +199,12 @@ function Level:fadeScreenOut(time)
 end
 
 function Level:loadDefinition(index)
-  if not index then
-    index = self.defIndex_
-  else
-   self.defIndex_ = index
-  end
+  if not index then index = self.defIndex_
+  else self.defIndex_ = index end
 
   local loader, err = loadfile(settings.levels[self.defIndex_].definition_path)
-  local def
-
-  if loader == nil then
-    print('Cannot open level ' .. err)
-  else
-    def = loader()
-  end
+  if loader == nil then print('Cannot open level ' .. err)
+  else def = loader() end
 
   return def
 end
@@ -226,7 +218,6 @@ function Level:restart()
   local def = self:loadDefinition()
   local fadeColor = settings.world.death_fade_color
   local fadeTime = settings.world.death_fade_time
-
   self:fadeScreenIn(fadeColor, fadeTime)
   self:removeGameOver()
   self:clearTransients_()
