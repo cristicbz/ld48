@@ -26,8 +26,6 @@ local overlayer = MOAILayer2D.new()
 overlayer:setViewport(viewport)
 MOAISim.pushRenderPass(overlayer)
 
-MOAIGfxDevice.getFrameBuffer():setClearDepth(true)
-
 -- Create solid background.
 local pixelTex = MOAITexture.new()
 pixelTex:setWrap(true)
@@ -57,9 +55,8 @@ end
 
 -- Setup light map.
 local lightBuffer = MOAIFrameBufferTexture.new()
-lightBuffer:init(screenWidth, screenHeight, MOAITexture.GL_RGBA8, MOAITexture.GL_DEPTH_COMPONENT16)
-lightBuffer:setClearColor(0.15, 0.15, 0.15, 1.0)
-lightBuffer:setClearDepth(true)
+lightBuffer:init(screenWidth, screenHeight)
+lightBuffer:setClearColor(0.15, 0.15, 0.15, 0.0)
 MOAIRenderMgr.setBufferTable({ lightBuffer })
 
 local lightBufferLayer = MOAILayer2D.new()
@@ -79,11 +76,21 @@ overlayer:insertProp(lightBufferProp)
 -- Setup mouse light.
 local mouseLightProp = MOAIProp2D.new()
 mouseLightProp:setDeck(lightDeck)
-mouseLightProp:setBlendMode(MOAIProp.GL_SRC_ALPHA, MOAIProp.GL_ONE)
-mouseLightProp:setDepthTest(MOAIProp.DEPTH_TEST_LESS)
-mouseLightProp:setDepthMask(true)
 mouseLightProp:setPriority(101)
+mouseLightProp:setBlendMode(MOAIProp2D.GL_ONE_MINUS_DST_ALPHA, MOAIProp2D.GL_ONE)
 lightBufferLayer:insertProp(mouseLightProp)
+
+local clearLightDeck = MOAIGfxQuad2D.new()
+clearLightDeck:setRect(-lightRad, -lightRad, lightRad, lightRad)
+clearLightDeck:setTexture(pixelTex)
+
+local clearLightProp = MOAIProp2D.new()
+clearLightProp:setDeck(clearLightDeck)
+clearLightProp:setColor(1, 1, 1, 0)
+clearLightProp:setPriority(102)
+clearLightProp:setBlendMode(MOAIProp2D.GL_DST_COLOR, MOAIProp2D.GL_ZERO)
+clearLightProp:setParent(mouseLightProp)
+lightBufferLayer:insertProp(clearLightProp)
 
 local lightX, lightY = 0, 0
 MOAICoroutine.new():run(function()
@@ -106,6 +113,8 @@ geomfmt:declareColor(3, MOAIVertexFormat.GL_UNSIGNED_BYTE)
 
 local shadowfmt = MOAIVertexFormat.new()
 shadowfmt:declareCoord(1, MOAIVertexFormat.GL_FLOAT, 2)
+shadowfmt:declareUV(2, MOAIVertexFormat.GL_FLOAT, 2)
+shadowfmt:declareColor(3, MOAIVertexFormat.GL_UNSIGNED_BYTE)
 
 objects = {}
 function intersectWithLight(vx, vy, dx, dy, lx, ly, rad, bias)
@@ -144,6 +153,12 @@ function intersectWithLight(vx, vy, dx, dy, lx, ly, rad, bias)
   return vx + dx * p, vy + dy * p, edge
 end
 
+function writeFlat(buff, x, y)
+  buff:writeFloat(x, y)
+  buff:writeFloat(0, 0)
+  buff:writeColor32(1, 1, 1, 1)
+end
+
 local prevX, prevY
 for _, wall in pairs(worldDef.walls) do
   local nverts = #wall.poly / 2 - 1
@@ -157,9 +172,7 @@ for _, wall in pairs(worldDef.walls) do
   shadowbuffer:reserveVerts(nverts * 2 + 2)
 
   for i = 1, nverts do
-    geombuffer:writeFloat(wall.poly[i * 2 - 1], wall.poly[i * 2])
-    geombuffer:writeFloat(0, 0)
-    geombuffer:writeColor32(1, 1, 1, 1)
+    writeFlat(geombuffer, wall.poly[i * 2 - 1], wall.poly[i * 2])
   end
   geombuffer:bless()
   shadowbuffer:bless()
@@ -192,21 +205,18 @@ for _, wall in pairs(worldDef.walls) do
   
   local shadowprop = MOAIProp2D.new()
   shadowprop:setDeck(shadowmesh)
-  shadowprop:setDepthTest(MOAIProp2D.DEPTH_TEST_ALWAYS)
-  shadowprop:setDepthMask(true)
-  shadowprop:setColor(1,1,1,1.0)
+  shadowprop:setColor(0, 0, 0, 1.0)
   shadowprop:setPriority(100)
   if debug then
     overlayer:insertProp(shadowprop)
   else
-    shadowprop:setBlendMode(MOAIProp.GL_ZERO, MOAIProp.GL_ONE)
+    shadowprop:setBlendMode(MOAIProp.GL_ONE, MOAIProp.GL_ONE)
     lightBufferLayer:insertProp(shadowprop)
   end
 
   MOAICoroutine.new():run(
       function()
         while true do
-
           local px, py = wall.poly[nverts * 2 - 1], wall.poly[nverts * 2]
           local pdot = 0.0
           local limitA, limitB
@@ -245,8 +255,8 @@ for _, wall in pairs(worldDef.walls) do
               local lx, ly = vx - lightX, vy - lightY
               lx, ly = lx / 4, ly / 4
 
-              shadowbuffer:writeFloat(vx, vy)
-              shadowbuffer:writeFloat(vx + lx, vy + ly)
+              writeFlat(shadowbuffer, vx, vy)
+              writeFlat(shadowbuffer, vx + lx, vy + ly)
             end
             shadowbuffer:bless()
           else
@@ -278,30 +288,30 @@ for _, wall in pairs(worldDef.walls) do
 
                   shadowprop:setVisible(true)
                   shadowbuffer:reset()
-                  shadowbuffer:writeFloat(ax, ay)
-                  shadowbuffer:writeFloat(aix, aiy)
+                  writeFlat(shadowbuffer, ax, ay)
+                  writeFlat(shadowbuffer, aix, aiy)
                   if edgeA ~= edgeB then
-                    shadowbuffer:writeFloat(lightX + EDGE[edgeA + 1][1] * lightRad,
+                    writeFlat(shadowbuffer, lightX + EDGE[edgeA + 1][1] * lightRad,
                                             lightY + EDGE[edgeA + 1][2] * lightRad)
 
                     if (edgeB - edgeA) % 4 == 2 then
                       edgeB = (edgeB - 1) % 4
-                      shadowbuffer:writeFloat(lightX + EDGE[edgeB + 1][1] * lightRad,
+                      writeFlat(shadowbuffer, lightX + EDGE[edgeB + 1][1] * lightRad,
                                               lightY + EDGE[edgeB + 1][2] * lightRad)
                     end
                   end
 
-                  shadowbuffer:writeFloat(bix, biy)
-                  shadowbuffer:writeFloat(bx, by)
+                  writeFlat(shadowbuffer, bix, biy)
+                  writeFlat(shadowbuffer, bx, by)
                   shadowbuffer:bless()
                 end
               else
                   shadowprop:setVisible(true)
                   shadowbuffer:reset()
-                  shadowbuffer:writeFloat(lightX - lightRad, lightY - lightRad)
-                  shadowbuffer:writeFloat(lightX + lightRad, lightY - lightRad)
-                  shadowbuffer:writeFloat(lightX + lightRad, lightY + lightRad)
-                  shadowbuffer:writeFloat(lightX - lightRad, lightY + lightRad)
+                  writeFlat(shadowbuffer, lightX - lightRad, lightY - lightRad)
+                  writeFlat(shadowbuffer, lightX + lightRad, lightY - lightRad)
+                  writeFlat(shadowbuffer, lightX + lightRad, lightY + lightRad)
+                  writeFlat(shadowbuffer, lightX - lightRad, lightY + lightRad)
                   shadowbuffer:bless()
               end
             end
