@@ -1,11 +1,11 @@
 Goal = setmetatable({}, { __index = PhysicalEntity })
 
-function Goal.new(cell, opts, x, y)
+function Goal.new(cell, opts, x, y, radius)
   local self = setmetatable(
       PhysicalEntity.new(cell), { __index = Goal })
 
   local body = self:createBody_(MOAIBox2DBody.STATIC)
-  local fixture = body:addCircle(0, 0, opts.activate_radius)
+  local fixture = body:addCircle(0, 0, radius)
   body:setTransform(x, y)
   self.done_ = false
   fixture:setCollisionHandler(

@@ -189,18 +189,33 @@ function defer(delay, fun, ...)
   timer:start()
 end
 
-function createAlignedRectFromVerts(body, verts, xscale, yscale)
-  local dx, dy = verts[2].x - verts[1].x, verts[2].y - verts[1].y
-  local angle = math.atan2(dy, dx)
-  local sprite_width = math.sqrt(dx * dx + dy * dy)
-  dx, dy = verts[1].x - verts[3].x, verts[1].y - verts[3].y
-  local sprite_height = math.sqrt(dx * dx + dy * dy)
-  local fixw, fixh = (1 - xscale) * sprite_width / 2, yscale * sprite_height
+function rescaleRectChain(v, xscale, yscale)
+  local xy = {}
+  local w = xscale * .5
+  local h = yscale
+  local dx, dy, cx, cy
 
-  local fixture = body:addRect(fixw, 0, sprite_width - fixw, fixh, 0)
-  body:setTransform(verts[4].x, verts[4].y, angle*180/math.pi)
+  -- Bottom
+  dx, dy = (v[3] - v[1]) * w, (v[4] - v[2]) * w
+  cx, cy = (v[3] + v[1]) * .5, (v[4] + v[2]) * .5
+  xy[1], xy[2] = cx - dx, cy - dy
+  xy[3], xy[4] = cx + dx, cy + dy
 
-  return fixture
+  -- Top
+  dx, dy = (v[5] - v[7]) * w, (v[6] - v[8]) * w
+  cx, cy = (v[5] + v[7]) * .5, (v[6] + v[8]) * .5
+  xy[7], xy[8] = cx - dx, cy - dy
+  xy[5], xy[6] = cx + dx, cy + dy
+
+  -- Right
+  dx, dy = (xy[5] - xy[3]) * h, (xy[6] - v[4]) * h
+  xy[3], xy[4] = xy[5] - dx, xy[6] - dy
+
+  -- Left
+  dx, dy = (xy[7] - xy[1]) * h, (xy[8] - xy[2]) * h
+  xy[1], xy[2] = xy[7] - dx, xy[8] - dy
+
+  return xy
 end
 
 

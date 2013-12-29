@@ -1,12 +1,18 @@
 Killer = setmetatable({}, { __index = PhysicalEntity })
 
-function Killer.new(cell, opts, deck, idx, verts, callback)
+function Killer.new(cell, opts, decker, verts, callback)
   local self = setmetatable(
       PhysicalEntity.new(cell), { __index = Killer })
 
-  local fixture = createAlignedRectFromVerts(
-      self:createBody_(MOAIBox2DBody.STATIC), verts,
-      opts.collision_width, opts.collision_height)
+  local body = self:createBody_(MOAIBox2DBody.STATIC)
+  local prop, cx, cy, xy = decker:makePropForFile(opts.texture_path, verts)
+  prop:setPriority(settings.priorities.doodads)
+  prop:setParent(body)
+  prop:setLoc(0, 0)
+  body:setTransform(cx, cy, 0)
+
+  local fixture = body:addChain(
+      rescaleRectChain(xy, opts.collision_width, opts.collision_height), true)
 
   fixture:setCollisionHandler(
       function(phase, a, b, arbiter)
@@ -18,11 +24,9 @@ function Killer.new(cell, opts, deck, idx, verts, callback)
   fixture:setFilter(settings.collision_masks.lethal,
                     settings.collision_masks.player)
   
-  self.prop_ = createPropFromVerts(deck, idx, verts)
-  self.prop_:setPriority(settings.priorities.doodads)
-  cell.fgLayer:insertProp(self.prop_)
-
+  cell.fgLayer:insertProp(prop)
   self.layer_ = cell.fgLayer
+  self.prop_ = prop
 
   return self
 end

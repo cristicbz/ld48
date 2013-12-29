@@ -43,7 +43,7 @@ function LightMap.new(layer)
     self.glowProp_:setDeck(self.destDeck_)
     self.glowProp_:setBlendMode(MOAIProp.GL_SRC_COLOR, MOAIProp.GL_ONE)
     self.glowProp_:setPriority(settings.priorities.lightmap)
-    self.glowProp_:setColor(0.4, 0.4, 0.4, 0.4)
+    self.glowProp_:setColor(0.3, 0.4, 0.45, 0.4)
     self.destLayer_:insertProp(self.glowProp_)
   end
 

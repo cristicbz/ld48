@@ -186,6 +186,7 @@ function Swimmer:getLayer()
 end
 
 function Swimmer:explode()
+  if self.dead_ then return end
   local px, py = self.body:getWorldCenter()
   self.lightBall_:launch(px, py, randomf(-0.1, 0.1), randomf(-0.1, 0.1))
   for i = 1, 8 do

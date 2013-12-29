@@ -84,7 +84,6 @@ function LightBall:launch(x, y, vx, vy)
         function() self.collectible_ = true end)
     self.collectTimer_:start()
 
-    print (self.level_, self.level_.goal)
     if self.level_.goal then self.level_.goal:changedWinState() end
   end
 end

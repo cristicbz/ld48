@@ -28,9 +28,6 @@ function Assets.new()
   self.glowers = MOAITexture.new()
   self.glowers:load(settings.entities.green_algae_glower.texture_path)
 
-  self.cosmetics = MOAITexture.new()
-  self.cosmetics:load(settings.entities.cosmetics.texture_path)
-
   if not settings.debug.no_sound then
     self.music = MOAIUntzSound.new()
     self.music:load(settings.sounds.music_path)

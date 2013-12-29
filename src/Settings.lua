@@ -17,7 +17,7 @@ settings = {
   debug = {
     show_lines = false,
     disable_lightmap = false,
-    no_sound = true,
+    no_sound = false,
   },
 
   priorities = {
@@ -64,16 +64,15 @@ settings = {
       texture_path = "assets/throwable.png",
       sprite_size = 2.0,
       collision_ratio = 0.3125 * 1.5,
-      mass = 4.0,
+      mass = 2.0,
       restitution = 0.8,
       friction = 0.0,
       light_scale = 1.0,
-      light_color = { 0.5, 1.0, 1.0, 1.0 },
+      light_color = { 0.5, 0.8, 1.0, 1.0 },
       min_collect_time = 0.8,
     },
 
     goal = {
-      activate_radius = 4.0,
       light_scale = 1.0,
       light_color = {0.0, 0.2, 1.0, 0.8},
       fade_time_win = 1.0,
@@ -82,31 +81,33 @@ settings = {
 
     coral_killer = {
       texture_path = "assets/spikycoral.png",
-      collision_height = 24 / 64,
+      collision_height = 30 / 64,
       collision_width  = 52 / 64,
     },
 
     rock_killer = {
       texture_path = "assets/rockshards.png",
-      collision_height = 30 / 64,
+      collision_height = 40 / 64,
       collision_width  = 52 / 64,
     },
 
     green_algae_glower = {
       texture_path = "assets/glowers.png",
-      activate_radius = 6.0,
+      activate_radius = 4.0,
+      activate_offset = -1.0,
       light_time = 3.0,
-      light_scale = 1.0,
-      light_color = { 0.1, 1.0, 0.6, 0.25 },
+      light_scale = 0.9,
+      light_color = { 0.1, 1.0, 0.6, 0.2 },
       off_uv_quad = { 0.0, 0.5, 0.5, 0.0 },
       on_uv_quad = { 0.5, 0.5, 1.0, 0.0 },
     },
 
     red_algae_glower = {
       texture_path = "assets/glowers.png",
-      activate_radius = 6.0,
+      activate_radius = 4.0,
+      activate_offset = -1.0,
       light_time = 3.0,
-      light_scale = 1.0,
+      light_scale = 0.9,
       light_color = { 1.0, 0.4, 0.4, 0.25 },
       off_uv_quad = { 0.0, 1.0, 0.5, 0.5 },
       on_uv_quad = { 0.5, 1.0, 1.0, 0.5 },
@@ -126,12 +127,12 @@ settings = {
       },
     },
 
-    cosmetics = {
+    decorations = {
       texture_path = "assets/algae.png",
-      link_to_uv = {
-        ["algae1.png"] = {0.0, 1.0, 0.25, 0.0},
-        ["algae2.png"] = {0.25, 1.0, 0.5, 0.0},
-        ["algae3.png"] = {0.5, 1.0, 0.75, 0.0},
+      subclass_to_uv = {
+        ["decoration1"] = {0.0, 1.0, 0.25, 0.0},
+        ["decoration2"] = {0.25, 1.0, 0.5, 0.0},
+        ["decoration3"] = {0.5, 1.0, 0.75, 0.0},
       }
     }
   },
@@ -182,9 +183,9 @@ settings = {
 
   levels = {
     {
-      definition_path = "assets/l0.level",
-      background = "assets/level0.png",
-      outline = "assets/l0-outline.png",
+      definition_path = "assets/sample.lua",
+      background = "assets/full-background.png",
+      outline = "assets/sample-outline.png",
     },
     {
       definition_path = "assets/l1.level",

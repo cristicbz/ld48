@@ -97,6 +97,75 @@ function LevelCell:destroy()
   end
 end
 
+Decker = {}
+
+function Decker.new()
+  local self = setmetatable({}, {__index = Decker})
+  self.deckInfos_ = {}
+  return self
+end
+
+function Decker:getInfo(filename)
+  local deckInfo = self.deckInfos_[filename]
+  if deckInfo then return deckInfo end
+
+  deckInfo = {}
+  deckInfo.deck = MOAIGfxQuadDeck2D.new()
+  deckInfo.deck:setTexture(filename)
+  deckInfo.deck:reserve(8)
+  deckInfo.capacity = 8
+  deckInfo.used = 0
+  deckInfo.xy = {}
+  deckInfo.uv = {}
+  self.deckInfos_[filename] = deckInfo
+
+  return deckInfo
+end
+
+function Decker:makePropForFile(filename, xy, uv, absolute)
+  return self:makePropForInfo(self:getInfo(filename), xy, uv, absolute)
+end
+
+function Decker:makePropForInfo(info, xy, uv, absolute)
+  local deck = info.deck
+  local prop = MOAIProp2D.new()
+
+  uv = uv or {0.0, 1.0, 1.0, 0.0}
+
+  if info.used == info.capacity then
+    info.capacity = info.capacity * 2
+    deck:reserve(info.capacity)
+    for i = 1, info.used do
+      deck:setQuad(i, unpack(info.xy[i]))
+      deck:setUVRect(i, unpack(info.uv[i]))
+    end
+  end
+
+  local index = info.used + 1
+  local cx, cy = 0, 0
+  if not absolute then 
+    cx = (xy[1] + xy[3] + xy[5] + xy[7]) * .25
+    cy = (xy[2] + xy[4] + xy[6] + xy[8]) * .25
+    for i = 1,4 do
+      xy[i * 2 - 1] = xy[i * 2 - 1] - cx
+      xy[i * 2] = xy[i * 2] - cy
+    end
+    prop:setLoc(cx, cy)
+  end
+
+  info.uv[index] = uv
+  info.xy[index] = xy
+  deck:setQuad(index, unpack(xy))
+  deck:setUVRect(index, unpack(uv))
+
+  prop:setDeck(deck)
+  prop:setIndex(index)
+  
+  info.used = index
+
+  return prop, cx, cy, xy
+end
+
 -------------------------------------------------------------------------------
 -- Level rig
 -------------------------------------------------------------------------------
@@ -113,6 +182,7 @@ function Level.new(world, bgLayer, fgLayer, overlayLayer, assets)
   self.lightmap = LightMap.new(overlayLayer)
 
   self.bodyLookup = ActiveSet.new()
+  self.decker = Decker.new()
 
   if not settings.debug.no_sound then
     self.music = assets.music
@@ -136,14 +206,63 @@ function Level.new(world, bgLayer, fgLayer, overlayLayer, assets)
   self.outline_:setPriority(settings.priorities.lightmap - 1)
   self.overlayLayer:insertProp(self.outline_)
 
+  self:initFactories_()
+
   local t = MOAITimer.new()
-  t:setSpan(1.0)
+  t:setSpan(2.0)
   t:setMode(MOAITimer.LOOP)
   t:setListener(MOAITimer.EVENT_TIMER_LOOP,
-                function() print(MOAIRenderMgr.getPerformanceDrawCount()) end)
+                function()
+                  print('Draw count:', MOAIRenderMgr.getPerformanceDrawCount())
+                end)
   t:start()
 
   return self
+end
+
+function Level:initFactories_()
+  local decoration_helper = function(level, object)
+    local uv = settings.entities.decorations.subclass_to_uv[object.subclass]
+    local tex = settings.entities.decorations.texture_path
+    local prop = level.decker:makePropForFile(tex, object.poly, uv, true)
+    prop:setPriority(settings.priorities.doodads)
+    level.fgLayer:insertProp(prop)
+  end
+
+  local killer_helper = function(opts)
+    return function(level, object)
+      return Killer.new(
+          level.globalCell, opts, level.decker, object.poly,
+          function() level.player:explode() end)
+    end
+  end
+
+  local glower_helper = function(opts)
+    return function(level, object)
+      return Glower.new(
+          level.globalCell, opts, level.decker, object.poly)
+    end
+  end
+
+  local lit_glower_helper = function(opts)
+    return function(level, object)
+      local glower = Glower.new(
+          level.globalCell, opts, level.decker, object.poly)
+      glower:setGlowing(true)
+      return glower
+    end
+  end
+
+  self.factories_ = {
+    ["decoration1"] = decoration_helper,
+    ["decoration2"] = decoration_helper,
+    ["decoration3"] = decoration_helper,
+    ["shards"] = killer_helper(settings.entities.rock_killer),
+    ["coral"] = killer_helper(settings.entities.coral_killer),
+    ["green_glower_off"] = glower_helper(settings.entities.green_algae_glower),
+    ["green_glower_on"] = lit_glower_helper(settings.entities.green_algae_glower),
+    ["red_glower_off"] = glower_helper(settings.entities.red_algae_glower),
+  }
 end
 
 function Level:nextLevel()
@@ -227,11 +346,8 @@ function Level:restart()
 end
 
 function Level:createTransients_(def)
-  local scale = Game.kScreenWidth / def.width
-  local offsetX, offsetY = -Game.kScreenWidth / 2, -Game.kScreenHeight / 2
   self.player = Swimmer.new(self.transientCell_, self.assets)
-  self.player.body:setTransform(def.Player.x * scale + offsetX,
-                                def.Player.y * scale + offsetY)
+  self.player.body:setTransform(def.player[1].circle[1], def.player[1].circle[2])
 end
 
 function Level:clearCells_()
@@ -249,104 +365,29 @@ function Level:endOfGameHack()
 end
 
 function Level:loadByIndex(newIndex)
+  local def = self:loadDefinition(newIndex)
+
   self:clearCells_()
   self.bgDeck_:setTexture(settings.levels[newIndex].background)
   self.outDeck_:setTexture(settings.levels[newIndex].outline)
 
-  local def = self:loadDefinition(newIndex)
-  local scale = Game.kScreenWidth / def.width
-  local offsetX = -Game.kScreenWidth / 2
-  local offsetY = -Game.kScreenHeight / 2
-
   self:createTransients_(def)
-  self.goal = Goal.new(self.globalCell, settings.entities.goal,
-                       def.Goal.x * scale + offsetX,
-                       def.Goal.y * scale + offsetY)
+  self.goal = Goal.new(
+      self.globalCell, settings.entities.goal, unpack(def.goal[1].circle))
 
-  ObstaclePath.new(self.globalCell, def.Collisions, scale, offsetX, offsetY)
-
-  local image_to_entity = {}
-  image_to_entity["spikycoral.png"] = "coral_killer"
-  image_to_entity["rockshards.png"] = "rock_killer"
-
-  local killer_decks = {}
-  local numDangers = #def.Dangers
-  for k, v in pairs(image_to_entity) do
-    local deck = MOAIGfxQuadDeck2D.new()
-    deck:reserve(numDangers)
-    deck:setTexture(self.assets[v])
-    killer_decks[v] = deck
+  for _, path in pairs(def.collisions) do
+    ObstaclePath.new(self.globalCell, path.poly)
   end
 
-  function killerCallback()
-    self.player:explode()
-  end
-
-  for k, v in pairs(def.Dangers) do
-    local entity_name = image_to_entity[v.link]
-    if entity_name then
-      local deck = killer_decks[entity_name]
-      local entity = settings.entities[entity_name]
-      for i = 1,4 do
-        v[i].x = scale * v[i].x + offsetX
-        v[i].y = scale * v[i].y + offsetY
-      end
-      Killer.new(self.globalCell, entity, deck, k, v, killerCallback)
+  for _, doodad in pairs(def.doodads) do
+    local subclass = doodad.subclass or 'doodad'
+    local factory = self.factories_[subclass]
+    if not factory then
+      print('Skipping unknown doodad subclass "' .. subclass .. '".')
+    else
+      factory(self, doodad)
     end
   end
-
-  local numAlgae = #def.Algae + #def.LitAlgae
-  local algaeDeck = MOAIGfxQuadDeck2D.new()
-  algaeDeck:setTexture(self.assets.glowers)
-  algaeDeck:reserve(numAlgae * Glower.kIndicesRequired)
-  local n
-  for k, v in pairs(def.Algae) do
-      local opts
-
-      for i = 1,4 do
-        v[i].x = scale * v[i].x + offsetX
-        v[i].y = scale * v[i].y + offsetY
-      end
-
-      if v.link == "glowalgae_red_on.png" then
-        opts = settings.entities.red_algae_glower
-      else
-        opts = settings.entities.green_algae_glower
-      end
-
-      Glower.new(self.globalCell, opts, algaeDeck,
-                 (k - 1) * Glower.kIndicesRequired + 1, v)
-      n = k
-  end
-
-  for k, v in pairs(def.LitAlgae) do
-      for i = 1,4 do
-        v[i].x = scale * v[i].x + offsetX
-        v[i].y = scale * v[i].y + offsetY
-      end
-
-      Glower.new(self.globalCell, settings.entities.green_algae_glower,
-                 algaeDeck, (k + n - 1) * Glower.kIndicesRequired + 1, v)
-          :setGlowing(true)
-  end
-
-  local cosmeticsDeck = MOAIGfxQuadDeck2D.new()
-  cosmeticsDeck:reserve(#def.Cosmetics)
-  cosmeticsDeck:setTexture(self.assets.cosmetics)
-  for k, v in pairs(def.Cosmetics) do
-      for i = 1,4 do
-        v[i].x = scale * v[i].x + offsetX
-        v[i].y = scale * v[i].y + offsetY
-      end
-
-      local prop = createPropFromVerts(cosmeticsDeck, k, v)
-      cosmeticsDeck:setUVRect(
-          k, unpack(settings.entities.cosmetics.link_to_uv[v.link]))
-      prop:setPriority(settings.priorities.doodads)
-      self.fgLayer:insertProp(prop)
-  end
-
-  self:addText(def)
 end
 
 function Level:addText(def)

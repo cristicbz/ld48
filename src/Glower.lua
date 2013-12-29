@@ -1,16 +1,30 @@
-Glower = setmetatable({
-  kIndicesRequired = 2,
-}, { __index = PhysicalEntity })
+Glower = setmetatable({}, { __index = PhysicalEntity })
 
-function Glower.new(cell, opts, deck, startIdx, verts)
+function Glower.new(cell, opts, decker, verts)
   local self = setmetatable(
       PhysicalEntity.new(cell), { __index = Glower })
-
+  
   local body = self:createBody_(MOAIBox2DBody.STATIC)
-  local fixture = body:addCircle(0, 0, opts.activate_radius)
-  local bx = (verts[1].x + verts[2].x + verts[3].x + verts[4].x) * .25
-  local by = (verts[1].y + verts[2].y + verts[3].y + verts[4].y) * .25
-  body:setTransform(bx, by, 0)
+  local propOff, cx, cy, xy = decker:makePropForFile(
+      opts.texture_path, verts, opts.off_uv_quad)
+  local propOn = decker:makePropForFile(
+      opts.texture_path, xy, opts.on_uv_quad, true)
+  local dx = (xy[1] + xy[3] - xy[5] - xy[7]) * .5
+  local dy = (xy[2] + xy[4] - xy[6] - xy[8]) * .5
+  local d = math.sqrt(dx * dx + dy * dy)
+  local fixture = body:addCircle(
+      dx / d * opts.activate_offset, dy / d * opts.activate_offset,
+      opts.activate_radius)
+
+  body:setTransform(cx, cy, 0)
+  propOff:setParent(body)
+  propOff:setLoc(0, 0)
+  propOff:setPriority(settings.priorities.doodads + 1)
+
+  propOn:setParent(body)
+  propOn:setPriority(settings.priorities.doodads + 1)
+  propOn:setColor(0.0, 0.0, 0.0, 0.0)
+  propOn:setVisible(false)
 
   fixture:setCollisionHandler(
       function(phase, a, b, arbiter)
@@ -21,17 +35,6 @@ function Glower.new(cell, opts, deck, startIdx, verts)
 
   fixture:setFilter(settings.collision_masks.nonlethal,
                     settings.collision_masks.collectible)
-  
-
-  deck:setUVRect(startIdx, unpack(opts.off_uv_quad))
-  self.propOff_ = createPropFromVerts(deck, startIdx, verts)
-  self.propOff_:setPriority(settings.priorities.doodads + 1)
-
-  deck:setUVRect(startIdx + 1, unpack(opts.on_uv_quad))
-  self.propOn_ = createPropFromVerts(deck, startIdx + 1, verts)
-  self.propOn_:setPriority(settings.priorities.doodads + 1)
-  self.propOn_:setColor(0.0, 0.0, 0.0, 0.0)
-  self.propOn_:setVisible(false)
 
   self.light_ = cell.lightmap:addLight()
   self.lightColor_ = opts.light_color
@@ -42,11 +45,13 @@ function Glower.new(cell, opts, deck, startIdx, verts)
   self.light_:setVisible(false)
   self.light_:setParent(body)
 
-  cell.fgLayer:insertProp(self.propOff_)
-  cell.fgLayer:insertProp(self.propOn_)
+  cell.fgLayer:insertProp(propOff)
+  cell.fgLayer:insertProp(propOn)
 
   self.layer_ = cell.fgLayer
   self.lightmap_ = cell.lightmap
+  self.propOn_ = propOn
+  self.propOff_ = propOff
   self.on_ = false
 
   return self
