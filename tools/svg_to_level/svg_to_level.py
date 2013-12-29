@@ -79,11 +79,17 @@ def path_to_polygon(path, opts):
     if isinstance(segment, svg.Line):
       poly.append(segment.start)
     else:
-      num_verts = int(segment.length() / refine + .5)
+      num_verts = int(segment.length() / refine) + 1
       step = 1.0 / num_verts
       poly.extend((segment.point(x * step) for x in xrange(num_verts)))
 
   poly.append(path[-1].end)
+
+  min_x = min(enumerate(poly), key = lambda x: x[1].real)
+  for i in xrange(1, len(poly)):
+    next_y = poly[(i + min_x[0]) % len(poly)].imag
+    if next_y > min_x[1].imag: break
+    elif next_y < min_x[1].imag: poly.reverse(); break
 
   return poly
 
@@ -122,8 +128,9 @@ def parse_element(element, objects, transform, opts):
       rx, ry = float(element.get(RX_ATTR)), float(element.get(RY_ATTR))
 
       xy = transform_one(transform, xy)
-      rx *= transform[0]
-      ry *= transform[3]
+      if transform:
+        rx *= transform[0]
+        ry *= transform[3]
       radius = (rx + ry) * .5
       if max(rx, ry) / min(rx, ry) > 1.05:
         print 'W: Ellipse ' + element.get('id') + ' (%f, %f) will be ' \
@@ -136,7 +143,7 @@ def parse_element(element, objects, transform, opts):
       poly = transform_many(transform, path_to_polygon(path, opts))
       obj['poly'] = finalize_coords(poly, opts)
   elif element.tag == RECT_TAG or element.tag == IMAGE_TAG:
-    poly = transform_many(transform, rect_to_polygon(element, True))
+    poly = transform_many(transform, rect_to_polygon(element, False))
     obj['poly'] = finalize_coords(poly, opts)
     link = element.get(LINK_ATTR)
     desc = element.find(DESC_TAG)
@@ -154,25 +161,31 @@ def parse_svg(filename, opts):
 
   level = {}
   for layer_element in root.findall(GROUP_TAG):
+    name = layer_element.get(LABEL_ATTR).lower()
+    if name[0] == '#': continue
+
     objects = []
     transform = parse_transform(layer_element.get('transform'))
     for child in layer_element: parse_element(child, objects, transform, opts)
-    layer = {'objects': objects}
-    level[layer_element.get(LABEL_ATTR).lower()] = layer
+    level[name] = objects
 
   return level
 
-def to_lua(obj):
+def to_lua(obj, depth):
+  prefix = '  ' * depth
+  prefixPlus = '  ' * (depth + 1)
   if isinstance(obj, list):
-    return '{' + ','.join(itertools.imap(to_lua, obj)) + '}'
+    return '{\n' + prefixPlus + (',\n' + prefixPlus).join( \
+        itertools.imap(lambda x: to_lua(x, depth + 1) , obj)) + '\n' + prefix + '}'
   elif isinstance(obj, dict):
-    return '{' + \
-        ','.join((k + '=' + to_lua(v) for (k, v) in obj.iteritems())) + '}'
+    return '{\n' + prefixPlus + (',\n' + prefixPlus).join( \
+        (k + ' = ' + to_lua(v, depth + 1) for (k, v) in obj.iteritems())) + \
+        '\n' + prefix + '}'
   else:
     return repr(obj)
 
 def level_to_lua(level):
-  return 'return ' + to_lua(level)
+  return 'return ' + to_lua(level, 0)
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='')

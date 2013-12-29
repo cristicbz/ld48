@@ -23,7 +23,7 @@ if not loader then
   print(err)
 else
   for layerName, layer in pairs(loader()) do
-    for iObject, object in pairs(layer.objects) do
+    for iObject, object in pairs(layer) do
       if object.poly then
         body:addChain(object.poly)
         for iCoord = 1, #object.poly / 2 do
