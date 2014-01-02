@@ -1,4 +1,5 @@
 local EDGE = {{1, 1}, {-1, 1}, {-1, -1}, {1, -1}}
+local debug = false
 
 shadowVertexShaderSource = [[
 uniform mat4 transform;
@@ -27,7 +28,6 @@ shadowShader:load(shadowVertexShaderSource, shadowFragShaderSource)
 shadowShader:reserveUniforms(2)
 shadowShader:declareUniform(1, 'transform', MOAIShader.UNIFORM_WORLD_VIEW_PROJ)
 shadowShader:declareUniform(2, 'ucolor', MOAIShader.UNIFORM_PEN_COLOR)
-
 
 shadowShader:setVertexAttribute(1, 'position')
 
@@ -85,7 +85,7 @@ lightDeck:setRect(-0.5, -0.5, 0.5, 0.5)
 -- Setup light map.
 local lightBuffer = MOAIFrameBufferTexture.new()
 lightBuffer:init(1280*1, 720*1)
-lightBuffer:setClearColor(0.0, 0.0, 0.0, 0.0)
+lightBuffer:setClearColor(0.05, 0.05, 0.05, 0.0)
 MOAIRenderMgr.setBufferTable({ lightBuffer })
 
 local lightBufferLayer = MOAILayer2D.new()
@@ -109,13 +109,11 @@ lightBufferProp:setPriority(1)
 overlayer:insertProp(lightBufferProp)
 
 local glowProp = MOAIProp2D.new()
-glowProp:setDeck(glowDeck)
+glowProp:setDeck(lightBufferDeck)
 glowProp:setBlendMode(MOAIProp2D.GL_SRC_COLOR, MOAIProp2D.GL_ONE)
 glowProp:setPriority(2)
-glowProp:setColor(0.4, 0.4, 0.4, 0.4)
+glowProp:setColor(0.9, 0.9, 0.9, 0.4)
 overlayer:insertProp(glowProp)
-
-
 
 function intersectWithLight(vx, vy, dx, dy, lx, ly, rad, bias)
   local px, py
@@ -266,6 +264,39 @@ function Light.new(layer, lightDeck, pixelTex, pixelDeck, priority, radius)
   self.shadowVertexCount_ = 0
   self.root_ = self.lightProp_
 
+  if debug then
+    local rectBuffer = MOAIVertexBuffer.new()
+    rectBuffer:setFormat(fmt)
+    rectBuffer:reserveVerts(4)
+    local bias = 2 / 1280 * 100 / radius
+    rectBuffer:writeFloat(-0.5 - bias, -0.5 - bias, -0.5 - bias, 0.5 + bias,
+                          0.5 + bias, 0.5 + bias, 0.5 + bias, -0.5 - bias)
+    rectBuffer:bless()
+
+    local rectLines = MOAIMesh.new()
+    rectLines:setVertexBuffer(rectBuffer)
+    rectLines:setPrimType(MOAIMesh.GL_LINE_LOOP)
+    rectLines:setShader(shadowShader)
+
+    local rectLinesProp = MOAIProp2D.new()
+    rectLinesProp:setPriority(4)
+    rectLinesProp:setDeck(rectLines)
+    rectLinesProp:setParent(lightProp)
+    overlayer:insertProp(rectLinesProp)
+
+    local shadowLines = MOAIMesh.new()
+    shadowLines:setVertexBuffer(shadowBuffer)
+    shadowLines:setPrimType(MOAIMesh.GL_LINE_STRIP)
+    shadowLines:setShader(shadowShader)
+
+    local shadowLinesProp = MOAIProp2D.new()
+    shadowLinesProp:setDeck(shadowLines)
+    shadowLinesProp:setPriority(5)
+    shadowLinesProp:setColor(1.0, 0.0, 0.0, 1.0)
+    overlayer:insertProp(shadowLinesProp)
+  end
+
+
   return self
 end
 
@@ -351,12 +382,17 @@ function Light:polyCaster_(poly, circle)
 
         if (edgeB - edgeA) % 4 == 2 then
           local eb = EDGE[(edgeB - 1) % 4 + 1]
-          buf:writeFloat(lightX + eb[1] * lightRad, lightY + eb[2] * lightRad)
-          inserted = inserted + 1
+          local ebx, eby = lightX + eb[1] * lightRad, lightY + eb[2] * lightRad
+          buf:writeFloat(bix, biy, ebx, eby, ebx, eby)
+          inserted = inserted + 3
+        else
+          buf:writeFloat(bix, biy, bix, biy)
+          inserted = inserted + 2
         end
+      else
+        buf:writeFloat(bix, biy, bix, biy)
+        inserted = inserted + 2
       end
-      buf:writeFloat(bix, biy, bix, biy)
-      inserted = inserted + 2
     end
   else
     if self.shadowVertexCount_ > 0 then
@@ -438,7 +474,7 @@ end
 
 local lightWorld = LightWorld.new(worldDef.walls)
 local mouseLight = Light.new(
-    lightBufferLayer, lightDeck, pixelTex, pixelDeck, 1, 30)
+    lightBufferLayer, lightDeck, pixelTex, pixelDeck, 1, 10)
 lightWorld:addLight(mouseLight)
 mouseLight:updateShadows()
 
@@ -447,32 +483,34 @@ world:setUnitsToMeters(1.0)
 world:setGravity(0.0)
 
 local k, lights = 4, {mouseLight}
-for _, light in pairs(worldDef.lights) do
-  local l = Light.new(
-      lightBufferLayer, lightDeck, pixelTex, pixelDeck, k, 20)
-  lightWorld:addLight(l)
-  local b = world:addBody(MOAIBox2DBody.DYNAMIC)
-  local f = b:addCircle(0, 0, 0.2)
-  f:setDensity(40)
-  f:setRestitution(0.2)
-  f:setFriction(0.0)
-  b:resetMassData()
-  b:setFixedRotation(true)
-  local vx, vy = math.random() * 1.0 - 0.5, math.random() * 1.0 - 0.5
-  local v = math.sqrt(vx * vx + vy * vy)
-  vx, vy = vx / v * 10.0, vy / v * 10.0
-  --b:setLinearVelocity(vx, vy)
-  b:setTransform(light.circle[1], light.circle[2], 0)
-  l.body = b
+if worldDef.lights then
+  for _, light in pairs(worldDef.lights) do
+    local l = Light.new(
+        lightBufferLayer, lightDeck, pixelTex, pixelDeck, k, 20)
+    lightWorld:addLight(l)
+    local b = world:addBody(MOAIBox2DBody.DYNAMIC)
+    local f = b:addCircle(0, 0, 0.2)
+    f:setDensity(40)
+    f:setRestitution(0.2)
+    f:setFriction(0.0)
+    b:resetMassData()
+    b:setFixedRotation(true)
+    local vx, vy = math.random() * 1.0 - 0.5, math.random() * 1.0 - 0.5
+    local v = math.sqrt(vx * vx + vy * vy)
+    vx, vy = vx / v * 10.0, vy / v * 10.0
+    b:setLinearVelocity(vx, vy)
+    b:setTransform(light.circle[1], light.circle[2], 0)
+    l.body = b
 
-  --l:getNode():setColor(math.random() > 0.5 and 0.8 or 0.01,
-  --                     math.random() > 0.5 and 0.8 or 0.01,
-  --                     math.random() > 0.5 and 0.8 or 0.01, 0.0)
-  l:getNode():setColor(0.025, 0.25, 0.6*0.25, 0.0)
-  l:updateShadows()
-  l:replaceRoot(b)
-  table.insert(lights, l)
-  k = k + 4 
+    l:getNode():setColor(math.random() > 0.5 and 0.8 or 0.01,
+                         math.random() > 0.5 and 0.8 or 0.01,
+                         math.random() > 0.5 and 0.8 or 0.01, 0.0)
+    --l:getNode():setColor(0.025, 0.25, 0.6*0.25, 0.0)
+    l:updateShadows()
+    l:replaceRoot(b)
+    table.insert(lights, l)
+    k = k + 4 
+  end
 end
 world:start()
 
