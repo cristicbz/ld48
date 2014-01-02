@@ -75,15 +75,19 @@ def transform_many(t, zs):
 def path_to_polygon(path, opts):
   poly = []
   refine = opts['refinement']
+  last_point = None
   for segment in path:
     if isinstance(segment, svg.Line):
-      poly.append(segment.start)
+      if segment != last_point: poly.append(segment.start)
     else:
       num_verts = int(segment.length() / refine) + 1
       step = 1.0 / num_verts
-      poly.extend((segment.point(x * step) for x in xrange(num_verts)))
+      start = 0 if segment.start != last_point else 1
+      poly.extend((segment.point(x * step) for x in xrange(start, num_verts)))
+      last_point = segment.end
 
   poly.append(path[-1].end)
+  while poly[-1] == poly[0]: poly.pop()
 
   min_x = min(enumerate(poly), key = lambda x: x[1].real)
   for i in xrange(1, len(poly)):
@@ -144,6 +148,7 @@ def parse_element(element, objects, transform, opts):
       obj['poly'] = finalize_coords(poly, opts)
   elif element.tag == RECT_TAG or element.tag == IMAGE_TAG:
     poly = transform_many(transform, rect_to_polygon(element, False))
+
     obj['poly'] = finalize_coords(poly, opts)
     link = element.get(LINK_ATTR)
     desc = element.find(DESC_TAG)
