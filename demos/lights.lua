@@ -120,9 +120,8 @@ glowProp:setPriority(2)
 glowProp:setColor(0.9, 0.9, 0.9, 0.4)
 overlayer:insertProp(glowProp)
 
-function intersectWithLight(vx, vy, dx, dy, lx, ly, rad, bias)
+function intersectWithLight(vx, vy, dx, dy, lx, ly, rad)
   local px, py
-  bias = bias or 0.0
 
   if dx < 0 then
     px = (lx - rad - vx) / dx
@@ -150,8 +149,6 @@ function intersectWithLight(vx, vy, dx, dy, lx, ly, rad, bias)
     else edge = 1 end
     p = py
   end
-
-  if p < 0 then p = p + bias else p = p - bias end
 
   return vx + dx * p, vy + dy * p, edge
 end
@@ -205,7 +202,7 @@ function LightWorld.new(casters)
   self.lightForFixture_ = lightForFixture
   self.casters_ = casters
 
-  world:setTimeToSleep(1e20)
+  world:setTimeToSleep(1e40)
   world:start()
 
   return self
@@ -286,28 +283,9 @@ function Light.new(layer, lightDeck, pixelTex, pixelDeck, priority, radius)
   self.root_ = self.lightProp_
 
   if debug then
-    local rectBuffer = MOAIVertexBuffer.new()
-    rectBuffer:setFormat(fmt)
-    rectBuffer:reserveVerts(4)
-    local bias = 2 / 1280 * 100 / radius
-    rectBuffer:writeFloat(-0.5 - bias, -0.5 - bias, -0.5 - bias, 0.5 + bias,
-                          0.5 + bias, 0.5 + bias, 0.5 + bias, -0.5 - bias)
-    rectBuffer:bless()
-
-    local rectLines = MOAIMesh.new()
-    rectLines:setVertexBuffer(rectBuffer)
-    rectLines:setPrimType(MOAIMesh.GL_LINE_LOOP)
-    rectLines:setShader(shadowShader)
-
-    local rectLinesProp = MOAIProp2D.new()
-    rectLinesProp:setPriority(4)
-    rectLinesProp:setDeck(rectLines)
-    rectLinesProp:setParent(lightProp)
-    overlayer:insertProp(rectLinesProp)
-
     local shadowLines = MOAIMesh.new()
     shadowLines:setVertexBuffer(shadowBuffer)
-    shadowLines:setPrimType(MOAIMesh.GL_LINE_STRIP)
+    shadowLines:setPrimType(MOAIMesh.GL_POINTS)
     shadowLines:setShader(shadowShader)
 
     local shadowLinesProp = MOAIProp2D.new()
@@ -331,6 +309,29 @@ end
 
 function Light:markAsHidden(caster)
   self.casters_[caster] = nil
+end
+
+function intersectLines(ax, ay, ux, uy, bx, by, vx, vy)
+  local bax, bay = bx - ax, by - ay
+  local p = (bax * vy - bay * vx) / (ux * vy - uy * vx)
+  return ax + p * ux, ay + p * uy
+end
+
+function intersectLineCircle(ax, ay, bx, by, offx, offy, radius)
+  local det = ax * by - ay * bx
+  local dx, dy = bx - ax, by - ay
+  local dr2 = dx * dx + dy * dy
+  local delta = math.sqrt(radius * radius * dr2 - det * det)
+  local delta_dr2, det_dr2 = delta / dr2, det / dr2
+  
+  if math.abs(dx) > math.abs(dy) then
+    t = (det_dr2 * dy - ax) / dx - delta_dr2
+  else
+    t = (-det_dr2 * dx - ay) / dy - delta_dr2
+  end
+  if t < 0 then t = t + 2.0 * delta_dr2 end
+
+  return offx + t * dx, offy + t * dy
 end
 
 function Light:polyCaster_(poly, circle)
@@ -366,53 +367,55 @@ function Light:polyCaster_(poly, circle)
   if ax and bx then
     local alx, aly = ax - lightX, ay - lightY
     local blx, bly = bx - lightX, by - lightY
-
-    local outA = alx < -lightRad or alx > lightRad or 
-                 aly < -lightRad or aly > lightRad
-    local outB = blx < -lightRad or blx > lightRad or 
-                 bly < -lightRad or bly > lightRad
+    local adist = alx * alx + aly * aly
+    local bdist = blx * blx + bly * bly
+    local rad2 = lightRad * lightRad
+    local outA, outB = adist >= rad2, bdist >= rad2
 
     if (not outA) or (not outB) then 
+      local aix, aiy, bix, biy
+
       if outA then
-        ax, ay = intersectWithLight(
-            bx, by, ax - bx, ay - by, lightX, lightY, lightRad)
-        alx, aly = ax - lightX, ay - lightY
-      elseif outB then
-        bx, by = intersectWithLight(
-            ax, ay, bx - ax, by - ay, lightX, lightY, lightRad)
-        blx, bly = bx - lightX, by - lightY
+        aix, aiy = intersectLineCircle(blx, bly, alx, aly, bx, by, lightRad)
+      else
+        adist = lightRad / math.sqrt(adist)
+        aix, aiy = lightX + alx * adist, lightY + aly * adist
       end
 
-      local aix, aiy, edgeA = 
-          intersectWithLight(ax, ay, alx, aly, lightX, lightY, lightRad)
-      local bix, biy, edgeB =
-          intersectWithLight(bx, by, blx, bly, lightX, lightY, lightRad)
+      if outB then
+        bix, biy = intersectLineCircle(alx, aly, blx, bly, ax, ay, lightRad)
+      else
+        bdist = lightRad / math.sqrt(bdist)
+        bix, biy = lightX + blx * bdist, lightY + bly * bdist
+      end
 
+      local mx, my = (aix + bix) * .5, (aiy + biy) * .5
+      local mlx, mly = mx - lightX, my - lightY
+      local mfactor = lightRad / math.sqrt(mlx * mlx + mly * mly)
+      mx, my = lightX + mlx * mfactor, lightY + mly * mfactor
+
+      local atx, aty = intersectLines(aix, aiy, -aly, alx, mx, my, -mly, mlx)
+      local btx, bty = intersectLines(bix, biy, -bly, blx, mx, my, -mly, mlx)
+      
       if self.shadowVertexCount_ > 0 then
         inserted = inserted + 1
-        buf:writeFloat(ax, ay)
+        if outA then buf:writeFloat(aix, aiy)
+        else buf:writeFloat(ax, ay)
+        end
       end
 
-      buf:writeFloat(ax, ay, aix, aiy, bx, by)
-      inserted = inserted + 3
-
-      if edgeA ~= edgeB then
-        local ea = EDGE[edgeA + 1]
-        buf:writeFloat(lightX + ea[1] * lightRad, lightY + ea[2] * lightRad)
-        inserted = inserted + 1
-
-        if (edgeB - edgeA) % 4 == 2 then
-          local eb = EDGE[(edgeB - 1) % 4 + 1]
-          local ebx, eby = lightX + eb[1] * lightRad, lightY + eb[2] * lightRad
-          buf:writeFloat(bix, biy, ebx, eby, ebx, eby)
-          inserted = inserted + 3
-        else
-          buf:writeFloat(bix, biy, bix, biy)
-          inserted = inserted + 2
-        end
+      if outA then
+        inserted = inserted + 6
+        buf:writeFloat(aix, aiy, bx, by, atx, aty, bix, biy, btx, bty)
+        buf:writeFloat(btx, bty)
+      elseif outB then
+        inserted = inserted + 6
+        buf:writeFloat(ax, ay, aix, aiy, bix, biy, atx, aty, btx, bty)
+        buf:writeFloat(btx, bty)
       else
-        buf:writeFloat(bix, biy, bix, biy)
-        inserted = inserted + 2
+        inserted = inserted + 7
+        buf:writeFloat(ax, ay, aix, aiy, bx, by, atx, aty, bix, biy, btx, bty)
+        buf:writeFloat(btx, bty)
       end
     end
   else
@@ -495,7 +498,7 @@ end
 
 local lightWorld = LightWorld.new(worldDef.walls)
 local mouseLight = Light.new(
-    lightBufferLayer, lightDeck, pixelTex, pixelDeck, 1, 40)
+    lightBufferLayer, lightDeck, pixelTex, pixelDeck, 1, 20)
 lightWorld:addLight(mouseLight)
 mouseLight:updateShadows()
 
