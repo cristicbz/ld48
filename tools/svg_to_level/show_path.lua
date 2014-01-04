@@ -24,14 +24,18 @@ if not loader then
 else
   for layerName, layer in pairs(loader()) do
     for iObject, object in pairs(layer) do
-      if object.poly then
-        body:addChain(object.poly)
-        for iCoord = 1, #object.poly / 2 do
-          body:addCircle(
-              object.poly[iCoord * 2 - 1], object.poly[iCoord * 2], 0.2)
+      local poly = object.poly
+      --if poly then body:addChain(poly, true) end
+      --for iCoord = 1, #poly / 2 do
+      --  body:addCircle(poly[iCoord * 2 - 1], poly[iCoord * 2], 0.2)
+      --end
+      if object.convex then
+        for _,poly in pairs(object.convex) do
+          body:addChain(poly, true)
+          for iCoord = 1, #poly / 2 do
+            body:addCircle(poly[iCoord * 2 - 1], poly[iCoord * 2], 0.15)
+          end
         end
-      elseif object.circle then
-        body:addCircle(unpack(object.circle))
       end
     end
   end

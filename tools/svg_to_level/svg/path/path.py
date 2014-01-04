@@ -83,6 +83,34 @@ class CubicBezier(object):
 
         return lenght
 
+    def subdivide(self, max_area):
+        # I needed 100,000 subdivisions to satisfy assertAlmostEqual on the
+        # Arc segment, so I go for the same here. Over 1,000,000 subdivisions
+        # makes no difference in accuracy at all.
+        subdivisions = 1000
+        lenght = 0
+        delta = 1 / subdivisions
+        area = 0.0
+
+        subdiv = [self.point(0)]
+        current_point = self.point(delta)
+
+        for x in range(2, subdivisions):
+            next_point = self.point(delta*x)
+            prev_point = subdiv[-1]
+            u, v = next_point - current_point, prev_point - current_point
+            new_area = abs(u.real * v.imag - u.imag * v.real) * .5
+            if area + new_area > max_area:
+                area = 0.0
+                subdiv.append(current_point)
+            else:
+                area += new_area
+            current_point = next_point
+
+        subdiv.append(self.point(1.0))
+
+        return subdiv
+
 class QuadraticBezier(CubicBezier):
     # For Quadratic Bezier we simply subclass the Cubic. This is less efficient
     # and gives more complex calculations, but reuse means less bugs.

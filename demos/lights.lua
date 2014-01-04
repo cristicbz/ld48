@@ -85,7 +85,12 @@ lightDeck:setRect(-0.5, -0.5, 0.5, 0.5)
 -- Setup light map.
 local lightBuffer = MOAIFrameBufferTexture.new()
 lightBuffer:init(1280*1, 720*1)
-lightBuffer:setClearColor(0.05, 0.05, 0.05, 0.0)
+if debug then
+  lightBuffer:setClearColor(0.5, 0.5, 0.5, 0.0)
+else
+  lightBuffer:setClearColor(0.03, 0.03, 0.05, 0.0)
+end
+
 MOAIRenderMgr.setBufferTable({ lightBuffer })
 
 local lightBufferLayer = MOAILayer2D.new()
@@ -164,34 +169,43 @@ function LightWorld.new(casters)
   local casterForFixture = {}
   local lightForFixture = {}
 
-  local body = world:addBody(MOAIBox2DBody.STATIC)
-  for _, caster in pairs(casters) do
-    local fixture = body:addChain(caster.poly, true)
-    fixture:setSensor(true)
-    fixture:setCollisionHandler(
-        function(phase, a, b)
-          local caster = casterForFixture[a]
-          local light = lightForFixture[b]
-          if caster == nil or light == nil then
-            error('Unrecognized caster/light: '
-                  .. tostring(caster) .. ',' .. tostring(light))
-          end
-          if phase == MOAIBox2DArbiter.BEGIN then
-            light:markAsVisible(caster)
-          else
-            light:markAsHidden(caster)
-          end
-        end, MOAIBox2DArbiter.BEGIN + MOAIBox2DArbiter.END
-    )
+  if debug then
+    overlayer:setBox2DWorld(world)
+    overlayer:showDebugLines(true)
+  end
 
-    fixture:setFilter(1, 1, -2)
-    casterForFixture[fixture] = caster
+  local body = world:addBody(MOAIBox2DBody.STATIC)
+  for j, caster in pairs(casters) do
+    for i, poly in pairs(caster.convex) do
+      local fixture = body:addChain(poly, true)
+      fixture:setSensor(true)
+      fixture:setCollisionHandler(
+          function(phase, a, b)
+            local caster = casterForFixture[a]
+            local light = lightForFixture[b]
+            if caster == nil or light == nil then
+              error('Unrecognized caster/light: '
+                    .. tostring(caster) .. ',' .. tostring(light))
+            end
+            if phase == MOAIBox2DArbiter.BEGIN then
+              light:markAsVisible(caster)
+            elseif phase == MOAIBox2DArbiter.END then
+              light:markAsHidden(caster)
+            end
+          end, MOAIBox2DArbiter.ALL
+      )
+
+      fixture:setFilter(1, 1, -2)
+      casterForFixture[fixture] = poly
+    end
   end
 
   self.world_ = world
   self.casterForFixture_ = casterForFixture
   self.lightForFixture_ = lightForFixture
+  self.casters_ = casters
 
+  world:setTimeToSleep(1e20)
   world:start()
 
   return self
@@ -208,6 +222,9 @@ function LightWorld:addLight(light)
                    light:getNode(), MOAIProp2D.ATTR_Y_LOC)
   body:setNodeLink(light:getNode())
   self.lightForFixture_[fixture] = light
+  for _, caster in pairs(self.casters_) do
+    light:markAsHidden(caster)
+  end
 end
 
 --------------------------------------------------------------------------------
@@ -219,7 +236,7 @@ function Light.new(layer, lightDeck, pixelTex, pixelDeck, priority, radius)
   local self = setmetatable({
       layer_ = layer,
       radius_ = radius,
-      buffSize_ = 512,
+      buffSize_ = 1024,
       casters_ = {},
   }, {__index = Light})
 
@@ -252,7 +269,11 @@ function Light.new(layer, lightDeck, pixelTex, pixelDeck, priority, radius)
 
   local clearProp = MOAIProp2D.new()
   clearProp:setDeck(shadowMesh)
-  clearProp:setColor(1.0, 1.0, 1.0, 0.0)
+  if debug then
+    clearProp:setColor(1.0, 0.0, 1.0, 0.0)
+  else
+    clearProp:setColor(1.0, 1.0, 1.0, 0.0)
+  end
   clearProp:setPriority(priority + 2)
   clearProp:setBlendMode(MOAIProp2D.GL_DST_COLOR, MOAIProp2D.GL_ZERO)
   layer:insertProp(clearProp)
@@ -417,11 +438,10 @@ function Light:updateShadows()
   local vertexCount = 0
 
   if oldVertexCount > 0 then buffer:reset() end
+  local casterCount = 0
   for caster, _ in pairs(self.casters_) do
-    if caster.poly then 
-      vertexCount = vertexCount +
-          self:polyCaster_(caster.poly, caster.boundingCircle)
-    end
+    casterCount = casterCount + 1
+    vertexCount = vertexCount + self:polyCaster_(caster)
   end
 
   if vertexCount > 0 then
@@ -435,6 +455,7 @@ function Light:updateShadows()
   end
 
   self.shadowVertexCount_ = vertexCount
+  --print(casterCount, vertexCount)
 end
 
 function Light:getNode()
@@ -474,7 +495,7 @@ end
 
 local lightWorld = LightWorld.new(worldDef.walls)
 local mouseLight = Light.new(
-    lightBufferLayer, lightDeck, pixelTex, pixelDeck, 1, 10)
+    lightBufferLayer, lightDeck, pixelTex, pixelDeck, 1, 40)
 lightWorld:addLight(mouseLight)
 mouseLight:updateShadows()
 
@@ -486,7 +507,7 @@ local k, lights = 4, {mouseLight}
 if worldDef.lights then
   for _, light in pairs(worldDef.lights) do
     local l = Light.new(
-        lightBufferLayer, lightDeck, pixelTex, pixelDeck, k, 20)
+        lightBufferLayer, lightDeck, pixelTex, pixelDeck, k, 10)
     lightWorld:addLight(l)
     local b = world:addBody(MOAIBox2DBody.DYNAMIC)
     local f = b:addCircle(0, 0, 0.2)
@@ -500,6 +521,7 @@ if worldDef.lights then
     vx, vy = vx / v * 10.0, vy / v * 10.0
     b:setLinearVelocity(vx, vy)
     b:setTransform(light.circle[1], light.circle[2], 0)
+    print(light.circle[1], light.circle[2], 0)
     l.body = b
 
     l:getNode():setColor(math.random() > 0.5 and 0.8 or 0.01,
@@ -519,7 +541,7 @@ MOAICoroutine.new():run(function()
   while true do
     local mx, my = fglayer:wndToWorld(MOAIInputMgr.device.pointer:getLoc())
     if math.abs(mx) < 50 and math.abs(my) < 50 then
-      mouseLight:getNode():setLoc(mx, my)
+      mouseLight:getRoot():setLoc(mx, my)
     end
     for _, l in pairs(lights) do
       if l.body then
@@ -560,26 +582,32 @@ wallsBody:addChain(
 for _, wall in pairs(worldDef.walls) do
   wallsBody:addChain(wall.poly, true)
 
-  local nverts = #wall.poly / 2
-  local geombuffer = MOAIVertexBuffer.new()
-  geombuffer:setFormat(geomfmt)
-  geombuffer:reserveVerts(nverts)
+  for _, poly in pairs(wall.convex) do
+    local nverts = #poly / 2
+    local geombuffer = MOAIVertexBuffer.new()
+    geombuffer:setFormat(geomfmt)
+    geombuffer:reserveVerts(nverts)
 
-  for i = 1, nverts do
-    writeFlat(geombuffer, wall.poly[i * 2 - 1], wall.poly[i * 2])
+    for i = 1, nverts do
+      writeFlat(geombuffer, poly[i * 2 - 1], poly[i * 2])
+    end
+    geombuffer:bless()
+
+    local geommesh = MOAIMesh.new()
+    geommesh:setPrimType(MOAIMesh.GL_TRIANGLE_FAN)
+    geommesh:setVertexBuffer(geombuffer)
+    geommesh:setTexture(pixelTex)
+
+    local geomprop = MOAIProp2D.new()
+    geomprop:setDeck(geommesh)
+    if debug then
+      geomprop:setColor(0,0,0,0.5)
+    else
+      geomprop:setColor(0,0,0,1.0)
+    end
+    geomprop:setPriority(3)
+    overlayer:insertProp(geomprop)
   end
-  geombuffer:bless()
-
-  local geommesh = MOAIMesh.new()
-  geommesh:setPrimType(MOAIMesh.GL_TRIANGLE_FAN)
-  geommesh:setVertexBuffer(geombuffer)
-  geommesh:setTexture(pixelTex)
-
-  local geomprop = MOAIProp2D.new()
-  geomprop:setDeck(geommesh)
-  geomprop:setColor(0,0,0,1)
-  geomprop:setPriority(3)
-  overlayer:insertProp(geomprop)
 
 end
 
