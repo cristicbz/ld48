@@ -185,11 +185,6 @@ function table_to_str(t)
   return str .. '}'
 end
 
-    
-
-print(table_to_str(reversed_poly({1,2,3,4})))
-
-
 LightWorld = {}
 
 function LightWorld.new(casters)
@@ -207,7 +202,6 @@ function LightWorld.new(casters)
   local body = world:addBody(MOAIBox2DBody.STATIC)
   for j, caster in pairs(casters) do
     for i, poly in pairs(caster.convex) do
-      print(j, i)
       local fixture = body:addPolygon(reversed_poly(poly))
       fixture:setSensor(true)
       fixture:setCollisionHandler(
@@ -306,7 +300,6 @@ function Light.new(layer, lightDeck, pixelTex, pixelDeck, priority, radius)
   lightProp:setScl(radius * 2, radius * 2)
   layer:insertProp(lightProp)
 
-  print(priority)
   local clearProp = MOAIProp2D.new()
   clearProp:setDeck(shadowMesh)
   clearProp:setColor(1.0, 1.0, 1.0, 0.0)
@@ -516,7 +509,6 @@ function Light:updateShadows()
   end
 
   self.shadowVertexCount_ = vertexCount
-  --print(casterCount, vertexCount)
 end
 
 function Light:getNode()
@@ -582,7 +574,6 @@ if worldDef.lights then
     vx, vy = vx / v * 10.0, vy / v * 10.0
     b:setLinearVelocity(vx, vy)
     b:setTransform(light.circle[1], light.circle[2], 0)
-    print(light.circle[1], light.circle[2], 0)
     l.body = b
 
     l:getNode():setColor(math.random() > 0.5 and 0.8 or 0.01,
