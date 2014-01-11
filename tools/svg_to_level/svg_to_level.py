@@ -4,6 +4,7 @@ import argparse
 import math
 import re
 import random
+import copy
 import svg.path as svg
 import xml.etree.ElementTree as etree
 
@@ -91,13 +92,14 @@ def path_to_polygon(path, opts):
   last_point = None
   for segment in path:
     if isinstance(segment, svg.Line):
-      if segment != last_point: poly.append(segment.start)
+      if not last_point or abs(segment.start - last_point) > 2e-7:
+        poly.append(segment.start)
     else:
       poly.extend(segment.subdivide(refine))
       last_point = segment.end
 
   poly.append(path[-1].end)
-  while poly[-1] == poly[0]: poly.pop()
+  while abs(poly[-1] - poly[0]) < 2e-7: poly.pop()
 
   area = 0.0
 
@@ -148,7 +150,7 @@ def triangle_check(v0, v1, v2):
 
 def is_ccw(a, b, c):
   ab, cb, ca = a - b, c - b, c - a
-  return -a.real * cb.imag + b.real * ca.imag + c.real * ab.imag >= 0.0
+  return -a.real * cb.imag + b.real * ca.imag + c.real * ab.imag >= -2e-7
 
 def triangulate(vs):
   vs = list(vs)
@@ -159,6 +161,7 @@ def triangulate(vs):
     for bi in xrange(nv):
       ai, ci = (bi - 1) % nv, (bi + 1) % nv
       a, b, c = vs[ai], vs[bi], vs[ci]
+      ear = False
       if is_ccw(a, b, c):
         ab, cb = a - b, c - b
         ear = True
@@ -167,17 +170,22 @@ def triangulate(vs):
             ear = False
             break
 
-        if ear:
-          tris.add(tuple(sorted((indices[ai], indices[bi], indices[ci]))))
-          del indices[bi]
-          del vs[bi]
-          nv = nv - 1
-          break
+      if ear:
+        tris.add(tuple(sorted((indices[ai], indices[bi], indices[ci]))))
+        del indices[bi]
+        del vs[bi]
+        nv = nv - 1
+        break
+      elif nv == 3:
+        print 'W: Earless triangle; something is strange (hole, maybe?).'
+        nv = 0
+        break
 
   return tris
 
 def refine_triangulation(vs, tris):
   tris_by_edge = defaultdict(set)
+  nflips = 0
 
   def edges(t):
     return (((t[0], t[1]), 2), ((t[1], t[2]), 0), ((t[0], t[2]), 1))
@@ -218,47 +226,63 @@ def refine_triangulation(vs, tris):
       remove_tri(t2)
       add_tri(tuple(sorted((a, b, c))))
       add_tri(tuple(sorted((a, b, d))))
+      nflips += 1
 
   # Polygon merging.
-  polys = []
-  while tris:
-    seed_tri = random.sample(tris, 1)[0]
-    poly = list(seed_tri)
-    sort_poly(poly)
-    remove_tri(seed_tri)
+  best_polys = None
+  saved_tris = tris
+  saved_tris_by_edge = tris_by_edge
 
-    merged = True
-    while merged:
-      merged = False
-      for pbi in xrange(len(poly)):
-        pai = (pbi - 1) % len(poly)
-        pci = (pbi + 1) % len(poly)
-        pdi = (pbi + 2) % len(poly)
-        ai, bi, ci, di = poly[pai], poly[pbi], poly[pci], poly[pdi]
+  for attempt in xrange(50):
+    tris = copy.deepcopy(saved_tris)
+    tris_by_edge = copy.deepcopy(saved_tris_by_edge)
+    polys = []
+    while tris:
+      seed_tri = random.sample(tris, 1)[0]
+      poly = list(seed_tri)
+      remove_tri(seed_tri)
 
-        if bi < ci: edge = (bi, ci)
-        else: edge = (ci, bi)
+      merged = True
+      while merged:
+        merged = False
+        start_index = random.randrange(len(poly))
+        for i in xrange(len(poly)):
+          pbi = (i + start_index) % len(poly)
+          pai = (pbi - 1) % len(poly)
+          pci = (pbi + 1) % len(poly)
+          pdi = (pbi + 2) % len(poly)
+          ai, bi, ci, di = poly[pai], poly[pbi], poly[pci], poly[pdi]
 
-        candidate_tri = tris_by_edge[edge]
-        if len(candidate_tri) == 0: continue
-        assert len(candidate_tri) == 1
-        candidate_tri, tri_newi = iter(candidate_tri).next()
+          if bi < ci: edge = (bi, ci)
+          else: edge = (ci, bi)
 
-        newi = candidate_tri[tri_newi]
-        a, b, c, d, newv = vs[ai], vs[bi], vs[ci], vs[di], vs[newi]
-        if is_ccw(a, b, newv) and is_ccw(newv, c, d):
-          remove_tri(candidate_tri)
-          poly.insert(pci, newi)
-          merged = True
-          break
+          candidate_tri = tris_by_edge[edge]
+          if len(candidate_tri) == 0: continue
+          assert len(candidate_tri) == 1
+          candidate_tri, tri_newi = iter(candidate_tri).next()
 
-    polys.append(poly)
-    print len(polys)
+          newi = candidate_tri[tri_newi]
+          a, b, c, d, newv = vs[ai], vs[bi], vs[ci], vs[di], vs[newi]
+          if is_ccw(a, b, newv) and is_ccw(newv, c, d):
+            remove_tri(candidate_tri)
+            poly.insert(pci, newi)
+            merged = True
+            break
 
-  return [reversed([vs[i] for i in poly]) for poly in polys]
+      polys.append(poly)
+
+    if not best_polys or len(polys) < len(best_polys): best_polys = polys
+
+  return [reversed([vs[i] for i in poly]) for poly in best_polys], nflips
 
 def convexify(poly):
-  return refine_triangulation(poly, triangulate(poly))
+  tri = triangulate(poly)
+  nt = len(tri)
+  convex_polys, nflips = refine_triangulation(poly, tri)
+  nc = len(convex_polys)
+  print 'I: Convexified polygon: tris=%d, polys=%d (%d flips)' \
+        % (nt, nc, nflips)
+  return convex_polys
 
 def parse_element(element, objects, transform, opts):
   obj = {}

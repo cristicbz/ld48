@@ -88,7 +88,7 @@ lightBuffer:init(1280*1, 720*1)
 if debug then
   lightBuffer:setClearColor(0.5, 0.5, 0.5, 0.0)
 else
-  lightBuffer:setClearColor(0.03, 0.03, 0.05, 0.0)
+  lightBuffer:setClearColor(0.03, 0.03, 0.03, 0.0)
 end
 
 MOAIRenderMgr.setBufferTable({ lightBuffer })
@@ -157,6 +157,39 @@ end
 -- Rig: LightWorld                                                            --
 --------------------------------------------------------------------------------
 
+function reversed_poly(t)
+  local r = {}
+  local n = #t / 2
+  for i=1,n do
+    r[(n - i + 1) * 2 - 1] = t[i * 2 - 1]
+    r[(n - i + 1) * 2] = t[i * 2]
+  end
+  return r
+end
+
+function table_to_str(t)
+  local li = nil
+  local str = nil 
+  for i, v in pairs(t) do
+    if li == nil then
+      str = '{' .. tostring(i) .. ': ' .. tostring(v)
+    elseif type(i) ~= 'number' then
+      str = str .. '; \'' .. tostring(i) .. '\': ' .. tostring(v)
+    elseif i - li ~= 1 then
+      str = str .. '; ' .. tostring(i) .. ': ' + tostring(v)
+    else
+      str = str .. ', ' .. tostring(v)
+    end
+    li = i
+  end
+  return str .. '}'
+end
+
+    
+
+print(table_to_str(reversed_poly({1,2,3,4})))
+
+
 LightWorld = {}
 
 function LightWorld.new(casters)
@@ -174,7 +207,8 @@ function LightWorld.new(casters)
   local body = world:addBody(MOAIBox2DBody.STATIC)
   for j, caster in pairs(casters) do
     for i, poly in pairs(caster.convex) do
-      local fixture = body:addChain(poly, true)
+      print(j, i)
+      local fixture = body:addPolygon(reversed_poly(poly))
       fixture:setSensor(true)
       fixture:setCollisionHandler(
           function(phase, a, b)
@@ -200,6 +234,7 @@ function LightWorld.new(casters)
   self.world_ = world
   self.casterForFixture_ = casterForFixture
   self.lightForFixture_ = lightForFixture
+  self.bodyForLight_ = {}
   self.casters_ = casters
 
   world:setTimeToSleep(1e40)
@@ -219,9 +254,10 @@ function LightWorld:addLight(light)
                    light:getNode(), MOAIProp2D.ATTR_Y_LOC)
   body:setNodeLink(light:getNode())
   self.lightForFixture_[fixture] = light
-  for _, caster in pairs(self.casters_) do
-    light:markAsHidden(caster)
-  end
+  self.bodyForLight_[light] = body
+  local fixture = body:addCircle(0, 0, light:getSize() * light:getRadius())
+  fixture:setSensor(true)
+  fixture:setFilter(0, 0, 0)
 end
 
 --------------------------------------------------------------------------------
@@ -234,6 +270,7 @@ function Light.new(layer, lightDeck, pixelTex, pixelDeck, priority, radius)
       layer_ = layer,
       radius_ = radius,
       buffSize_ = 1024,
+      size_ = 0.2,
       casters_ = {},
   }, {__index = Light})
 
@@ -251,9 +288,14 @@ function Light.new(layer, lightDeck, pixelTex, pixelDeck, priority, radius)
 
   local shadowProp = MOAIProp2D.new()
   shadowProp:setDeck(shadowMesh)
-  shadowProp:setColor(0, 0, 0, 1.0)
+  if debug then
+    shadowProp:setColor(1.0, 0.0, 1.0, 1.0)
+    shadowProp:setBlendMode(MOAIProp.GL_SRC_ALPHA, MOAIProp.GL_ONE)
+  else
+    shadowProp:setColor(0.0, 0.0, 0.0, 1.0)
+    shadowProp:setBlendMode(MOAIProp.GL_ONE, MOAIProp.GL_ONE)
+  end
   shadowProp:setPriority(priority)
-  shadowProp:setBlendMode(MOAIProp.GL_ONE, MOAIProp.GL_ONE)
   layer:insertProp(shadowProp)
 
   local lightProp = MOAIProp2D.new()
@@ -264,13 +306,10 @@ function Light.new(layer, lightDeck, pixelTex, pixelDeck, priority, radius)
   lightProp:setScl(radius * 2, radius * 2)
   layer:insertProp(lightProp)
 
+  print(priority)
   local clearProp = MOAIProp2D.new()
   clearProp:setDeck(shadowMesh)
-  if debug then
-    clearProp:setColor(1.0, 0.0, 1.0, 0.0)
-  else
-    clearProp:setColor(1.0, 1.0, 1.0, 0.0)
-  end
+  clearProp:setColor(1.0, 1.0, 1.0, 0.0)
   clearProp:setPriority(priority + 2)
   clearProp:setBlendMode(MOAIProp2D.GL_DST_COLOR, MOAIProp2D.GL_ZERO)
   layer:insertProp(clearProp)
@@ -285,7 +324,7 @@ function Light.new(layer, lightDeck, pixelTex, pixelDeck, priority, radius)
   if debug then
     local shadowLines = MOAIMesh.new()
     shadowLines:setVertexBuffer(shadowBuffer)
-    shadowLines:setPrimType(MOAIMesh.GL_POINTS)
+    shadowLines:setPrimType(MOAIMesh.GL_LINE_STRIP)
     shadowLines:setShader(shadowShader)
 
     local shadowLinesProp = MOAIProp2D.new()
@@ -303,6 +342,10 @@ function Light:getRadius()
   return self.radius_
 end
 
+function Light:getSize()
+  return self.size_
+end
+
 function Light:markAsVisible(caster)
   self.casters_[caster] = true
 end
@@ -314,7 +357,7 @@ end
 function intersectLines(ax, ay, ux, uy, bx, by, vx, vy)
   local bax, bay = bx - ax, by - ay
   local p = (bax * vy - bay * vx) / (ux * vy - uy * vx)
-  return ax + p * ux, ay + p * uy
+  return ax + p * ux, ay + p * uy, p
 end
 
 function intersectLineCircle(ax, ay, bx, by, offx, offy, radius)
@@ -337,6 +380,7 @@ end
 function Light:polyCaster_(poly, circle)
   local lightX, lightY = self.lightProp_:getWorldLoc()
   local lightRad = self.radius_
+  local lightSize = self.size_
 
   local inserted = 0
   local buf = self.shadowBuffer_
@@ -373,20 +417,27 @@ function Light:polyCaster_(poly, circle)
     local outA, outB = adist >= rad2, bdist >= rad2
 
     if (not outA) or (not outB) then 
-      local aix, aiy, bix, biy
-
+      local aix, aiy, bix, biy, amx, amy, bmx, bmy
       if outA then
         aix, aiy = intersectLineCircle(blx, bly, alx, aly, bx, by, lightRad)
       else
-        adist = lightRad / math.sqrt(adist)
-        aix, aiy = lightX + alx * adist, lightY + aly * adist
+        local alpha = lightRad / math.sqrt(adist)
+        aix, aiy = lightX + alpha * alx, lightY + alpha * aly
+        --local beta = lightSize * (1 - alpha) * alpha
+        --local nx, ny = -beta * aly, beta * alx
+        --aix, aiy = lightX + alpha * alx + nx, lightY + alpha * aly + ny
+        --amx, amy = aix - 2.0 * nx, aiy - 2.0 * ny
       end
 
       if outB then
         bix, biy = intersectLineCircle(alx, aly, blx, bly, ax, ay, lightRad)
       else
-        bdist = lightRad / math.sqrt(bdist)
-        bix, biy = lightX + blx * bdist, lightY + bly * bdist
+        local alpha = lightRad / math.sqrt(bdist)
+        bix, biy = lightX + alpha * blx, lightY + alpha * bly
+        --local beta = lightSize * (1 - alpha) * alpha
+        --local nx, ny = beta * bly, -beta * blx
+        --bix, biy = lightX + alpha * blx + nx, lightY + alpha * bly + ny
+        --bmx, bmy = bix - 2.0 * nx, biy - 2.0 * ny
       end
 
       local mx, my = (aix + bix) * .5, (aiy + biy) * .5
@@ -406,16 +457,17 @@ function Light:polyCaster_(poly, circle)
 
       if outA then
         inserted = inserted + 6
-        buf:writeFloat(aix, aiy, bx, by, atx, aty, bix, biy, btx, bty)
-        buf:writeFloat(btx, bty)
+        buf:writeFloat(aix, aiy, bx, by, atx, aty, bix, biy, btx, bty, btx, bty)
       elseif outB then
         inserted = inserted + 6
-        buf:writeFloat(ax, ay, aix, aiy, bix, biy, atx, aty, btx, bty)
-        buf:writeFloat(btx, bty)
+        buf:writeFloat(ax, ay, aix, aiy, bix, biy, atx, aty, btx, bty, btx, bty)
       else
-        inserted = inserted + 7
-        buf:writeFloat(ax, ay, aix, aiy, bx, by, atx, aty, bix, biy, btx, bty)
-        buf:writeFloat(btx, bty)
+      inserted = inserted + 7
+        --buf:writeFloat(aix, aiy, 0, amx, amy, 1, ax, ay, 1,
+        --               atx, aty, 1, ax, ay, 1, btx, bty, 1,
+        --               btx, bty, 1, bx, by, 0, bmx, bmy, 1, bix, biy, 0, bix, biy, 0)
+        buf:writeFloat(ax, ay, aix, aiy, bx, by, atx, aty, bix, biy,
+                       btx, bty, btx, bty)
       end
     end
   else
@@ -437,7 +489,8 @@ end
 function Light:updateShadows()
   local oldVertexCount = self.shadowVertexCount_
   local buffer = self.shadowBuffer_
-  local prop = self.shadowProp_
+  local shadowProp = self.shadowProp_
+  local clearProp = self.clearProp_
   local vertexCount = 0
 
   if oldVertexCount > 0 then buffer:reset() end
@@ -449,12 +502,17 @@ function Light:updateShadows()
 
   if vertexCount > 0 then
     buffer:bless()
-    if oldVertexCount == 0 then prop:setVisible(true) end
+    if oldVertexCount == 0 then
+      shadowProp:setVisible(true)
+      clearProp:setVisible(true)
+    end
+
     if vertexCount > self.buffSize_ then
       print('WARNING: Shadow buffer overrun with '.. tostring(vertexCount))
     end
   elseif oldVertexCount > 0 then
-    prop:setVisible(false)
+    shadowProp:setVisible(false)
+    clearProp:setVisible(false)
   end
 
   self.shadowVertexCount_ = vertexCount
@@ -498,7 +556,7 @@ end
 
 local lightWorld = LightWorld.new(worldDef.walls)
 local mouseLight = Light.new(
-    lightBufferLayer, lightDeck, pixelTex, pixelDeck, 1, 20)
+    lightBufferLayer, lightDeck, pixelTex, pixelDeck, 1, 30)
 lightWorld:addLight(mouseLight)
 mouseLight:updateShadows()
 
