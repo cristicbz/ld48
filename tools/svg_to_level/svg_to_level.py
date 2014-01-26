@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 
 import argparse
-import math
-import re
-import random
 import copy
+import math
+import random
+import re
 import svg.path as svg
+import sys
 import xml.etree.ElementTree as etree
 
 from collections import defaultdict
@@ -33,6 +34,14 @@ LINK_ATTR = XLINK_URI + 'href'
 TRANSFORM_RE = re.compile(r'(\w+)\(([^\)]+)\)')
 TRANSFORM_ARGS_RE = re.compile(r'([-\d\.e]+)')
 
+DEFAULT_MIN_LENGTH = 1
+DEFAULT_MIN_AREA = 16
+DEFAULT_SCALE = 100
+
+def info(msg): sys.stderr.write('I: ' + msg + '\n')
+def warn(msg): sys.stderr.write('W: ' + msg + '\n')
+def error(msg): sys.stderr.write('E: ' + msg + '\n')
+
 def parse_transform(transform_string):
   if not transform_string: return None
 
@@ -58,9 +67,6 @@ def parse_transform(transform_string):
   return reduce(multiply_transforms, transforms)
 
 def multiply_transforms(a, b):
-  # [a0 a2 a4  [b0 b2 b4
-  #  a1 a3 a5   b1 b3 b5
-  #   0  0  1]   0  0  1]
   if not a: return b
   if not b: return a
   return [a[0] * b[0] + a[2] * b[1], a[1] * b[0] + a[3] * b[1],
@@ -86,20 +92,19 @@ def sort_poly(poly):
   a = sum(imap(lambda x: cross(*x), izip(poly, chain(poly[1:], poly[0:1]))))
   if a < 0: poly.reverse()
 
-def path_to_polygon(path, opts):
+def path_to_polygon(path, min_length, min_area):
   poly = []
-  refine = opts['refinement']
   last_point = None
   for segment in path:
     if isinstance(segment, svg.Line):
       if not last_point or abs(segment.start - last_point) > 2e-7:
         poly.append(segment.start)
     else:
-      poly.extend(segment.subdivide(refine))
+      poly.extend(segment.subdivide(min_area))
       last_point = segment.end
 
   poly.append(path[-1].end)
-  while abs(poly[-1] - poly[0]) < 2e-7: poly.pop()
+  while abs(poly[-1] - poly[0]) < min_length: poly.pop()
 
   area = 0.0
 
@@ -111,7 +116,7 @@ def path_to_polygon(path, opts):
       prev_point = simplified[-1]
       u, v = next_point - current_point, prev_point - current_point
       new_area = abs(u.real * v.imag - u.imag * v.real) * .5
-      if area + new_area > refine:
+      if area + new_area > min_area:
           area = 0.0
           simplified.append(current_point)
       else:
@@ -136,7 +141,6 @@ def link_to_subclass(link):
   subclass = link[link.rfind('/') + 1:]
   subclass = subclass[:subclass.find('.')]
   return subclass
-
 
 def triangle_check(v0, v1, v2):
   dot00, dot01, dot02 = dot(v0, v0), dot(v0, v1), dot(v0, v2)
@@ -177,7 +181,7 @@ def triangulate(vs):
         nv = nv - 1
         break
       elif nv == 3:
-        print 'W: Earless triangle; something is strange (hole, maybe?).'
+        warn('Earless triangle; something is strange (hole, maybe?).')
         nv = 0
         break
 
@@ -280,17 +284,17 @@ def convexify(poly):
   nt = len(tri)
   convex_polys, nflips = refine_triangulation(poly, tri)
   nc = len(convex_polys)
-  print 'I: Convexified polygon: tris=%d, polys=%d (%d flips)' \
-        % (nt, nc, nflips)
+  info('Convexified polygon: tris=%d, polys=%d (%d flips)' % (nt, nc, nflips))
   return convex_polys
 
-def parse_element(element, objects, transform, opts):
+def parse_element(element, objects, transform,
+                  min_length, min_area, directives):
   obj = {}
   transform = multiply_transforms(transform,
                                   parse_transform(element.get('transform')))
   if element.tag == GROUP_TAG:
     for child in element:
-      parse_element(child, objects, transform, opts)
+      parse_element(child, objects, transform, min_length, min_area, directives)
     return
 
   if element.tag == PATH_TAG:
@@ -304,24 +308,25 @@ def parse_element(element, objects, transform, opts):
         ry *= transform[3]
       radius = (rx + ry) * .5
       if max(rx, ry) / min(rx, ry) > 1.05:
-        print 'W: Ellipse ' + element.get('id') + ' (%f, %f) will be ' \
-              ' approximated as a circle with radius %f.' % (rx, ry, radius)
+        warn('Ellipse %s (%f, %f) will be approximated as a circle with '
+             'radius %f.' % (element.get('id'), rx, ry, radius))
 
       obj['circle'] = finalize_coords([xy])
       obj['circle'].append(radius)
     else:
       path = svg.parse_path(element.get('d'))
-      poly = list(transform_many(transform, path_to_polygon(path, opts)))
+      poly = list(transform_many(transform,
+                                 path_to_polygon(path, min_length, min_area)))
       sort_poly(poly)
 
       obj['poly'] = finalize_coords(poly)
-      if 'triangulate' in opts:
+      if 'triangulate' in directives:
         obj['convex'] = [finalize_coords(x) for x in convexify(poly)]
   elif element.tag == RECT_TAG or element.tag == IMAGE_TAG:
     poly = transform_many(transform, rect_to_polygon(element, False))
 
     obj['poly'] = finalize_coords(poly)
-    if element.tag == RECT_TAG and 'triangulate' in opts:
+    if element.tag == RECT_TAG and 'triangulate' in directives:
       obj['convex'] = [obj['poly']]
 
     link = element.get(LINK_ATTR)
@@ -331,15 +336,13 @@ def parse_element(element, objects, transform, opts):
 
   if obj: objects.append(obj)
 
-def parse_svg(filename, opts):
+def parse_svg(filename, scale, min_length, min_area):
   tree = etree.parse(filename)
   root = tree.getroot()
   width = float(root.get('width'))
   height = float(root.get('height'))
-  scale = opts['scale']
-  global_transform = \
-        [scale / width, 0.0, 0.0, -scale / width, -scale / 2, scale * height / width / 2]
-  opts['dims'] = width + height * 1j
+  global_transform = [scale / width, 0.0, 0.0,
+                      -scale / width, -scale / 2, scale * height / width / 2]
 
   level = {}
   for layer_element in root.findall(GROUP_TAG):
@@ -352,16 +355,15 @@ def parse_svg(filename, opts):
       requested = (w.strip() for w in label_components[1].split(','))
       for d in requested:
         if d not in ['triangulate']:
-          print 'W: Unrecognized directive "', d, '" in layer ', name
+          warn('Unrecognized directive "' + d + '" in layer ' + name)
           continue
         directives.append(d)
 
     objects = []
     transform = parse_transform(layer_element.get('transform'))
     transform = multiply_transforms(global_transform, transform)
-    for d in directives: opts[d] = True
-    for child in layer_element: parse_element(child, objects, transform, opts)
-    for d in directives: del opts[d]
+    for child in layer_element:
+      parse_element(child, objects, transform, min_length, min_area, directives)
     level[name] = objects
 
   return level
@@ -384,22 +386,44 @@ def level_to_lua(level):
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser(description='')
-  parser.add_argument('filename', metavar='FILE', type=str, nargs=1,
-      help='SVG file to convert')
-
-  parser.add_argument('--refinement', type=float, default=16,
-      help='Pixel distance between two consecutive points on a curve.')
-
-  parser.add_argument('--width', type=float, default=100.0,
-      help='The width of the screen to which to scale the world coordinates.')
+  parser.add_argument('filename', metavar='FILE', type=str, nargs='+',
+                      help='SVG files to convert')
+  parser.add_argument('-l', '--min-length', metavar='LENGTH',
+                      type=float, default=DEFAULT_MIN_LENGTH,
+                      help='minimum length of a segment; line segments are '
+                           'merged until over this value. (default=%.2f)' %
+                           DEFAULT_MIN_LENGTH)
+  parser.add_argument('-a', '--min-area', metavar='AREA', type=float,
+                      default=DEFAULT_MIN_AREA,
+                      help='minimum area of a triangle; triangles are merged '
+                           'until over this value. (default=%.2f)'
+                           % DEFAULT_MIN_AREA)
+  parser.add_argument('-s', '--width-scale', type=float, default=DEFAULT_SCALE,
+                      help='the width of the screen to which to scale the '
+                           'output world coordinates. (default=%.2f)' %
+                           DEFAULT_SCALE)
 
   args = parser.parse_args()
-  opts = {
-      'filename': args.filename[0],
-      'refinement': args.refinement,
-      'scale': args.width
-  }
+  for svg_filename in args.filename:
+    try:
+      info('Processing "' + svg_filename + '"...')
+      extension_start_idx = svg_filename.rfind('.')
+      if extension_start_idx == -1:
+        warn('Input file "' + svg_filename + '" has no extension.')
+        lua_filename = svg_filename + '.lua'
+      else:
+        if svg_filename[extension_start_idx:] != '.svg':
+          warn('Input file "' + svg_filename + '" is not of ".svg" type.')
+        lua_filename = svg_filename[:extension_start_idx] + '.lua'
 
-  with open('path.lua', 'w') as f:
-    f.write(level_to_lua(parse_svg(opts['filename'], opts)))
-    f.write('\n')
+      lua_text = level_to_lua(parse_svg(
+          svg_filename, args.width_scale, args.min_length, args.min_area))
+
+      with open(lua_filename, 'w') as lua_file:
+        lua_file.write(lua_text)
+        lua_file.write('\n')
+
+      info('Successfully converted "%s" -> "%s"' % (svg_filename, lua_filename))
+    except IOError:
+      error('Cannot open file "' + svg_filename + '".')
+

@@ -3,23 +3,30 @@ local debug = false
 
 shadowVertexShaderSource = [[
 uniform mat4 transform;
-uniform vec4 ucolor;
+varying float penumbra_u, penumbra_v;
 
 attribute vec4 position;
-
-varying vec4 colorVarying;
+attribute float penumbra_pt;
 
 void main() {
   gl_Position = position * transform;
-  colorVarying = ucolor;
+  if (penumbra_pt == 0) {
+    penumbra_v = penumbra_u = 1.0;
+  } else if (penumbra_pt == 1) {
+    penumbra_u = penumbra_v = 1e-20;
+  } else if (penumbra_pt == 2) {
+    penumbra_u = 0.0;
+    penumbra_v = 1.0;
+  }
 }
 ]]
 
 shadowFragShaderSource = [[
-varying vec4 colorVarying;
+uniform vec4 ucolor;
+varying float penumbra_u, penumbra_v;
 
 void main() {
-  gl_FragColor = colorVarying;
+  gl_FragColor = vec4(ucolor.rgb, ucolor.a * min(penumbra_u / penumbra_v, 1.0));
 }
 ]]
 
@@ -30,6 +37,7 @@ shadowShader:declareUniform(1, 'transform', MOAIShader.UNIFORM_WORLD_VIEW_PROJ)
 shadowShader:declareUniform(2, 'ucolor', MOAIShader.UNIFORM_PEN_COLOR)
 
 shadowShader:setVertexAttribute(1, 'position')
+shadowShader:setVertexAttribute(2, 'penumbra_pt')
 
 -- Create window and viewport.
 local worldX, worldY = 0, 0
@@ -88,7 +96,7 @@ lightBuffer:init(1280*1, 720*1)
 if debug then
   lightBuffer:setClearColor(0.5, 0.5, 0.5, 0.0)
 else
-  lightBuffer:setClearColor(0.03, 0.03, 0.03, 0.0)
+  lightBuffer:setClearColor(0.0, 0.0, 0.0, 0.0)
 end
 
 MOAIRenderMgr.setBufferTable({ lightBuffer })
@@ -263,13 +271,14 @@ function Light.new(layer, lightDeck, pixelTex, pixelDeck, priority, radius)
   local self = setmetatable({
       layer_ = layer,
       radius_ = radius,
-      buffSize_ = 1024,
-      size_ = 0.2,
+      buffSize_ = 4096,
+      size_ = 0.01,
       casters_ = {},
   }, {__index = Light})
 
   local fmt = MOAIVertexFormat.new()
   fmt:declareCoord(1, MOAIVertexFormat.GL_FLOAT, 2)
+  fmt:declareAttribute(2, MOAIVertexFormat.GL_FLOAT, 1)
 
   local shadowBuffer = MOAIVertexBuffer.new()
   shadowBuffer:setFormat(fmt)
@@ -380,25 +389,28 @@ function Light:polyCaster_(poly, circle)
 
   local nverts = #poly / 2
   local px, py = poly[nverts * 2 - 1], poly[nverts * 2]
-  local pdot = (poly[nverts * 2 - 2] - py) * (lightX - px) +
-               (px - poly[nverts * 2 - 3]) * (lightY - py)
+  local lpx, lpy = py - lightY, lightX - px
+  local dx, dy = poly[nverts * 2 - 2] - py, px - poly[nverts * 2 - 3]
+  local pdist = lightSize * lightRad / math.sqrt(lpx * lpx + lpy * lpy)
+  local pdot, pn = dx * lpy - dy * lpx, (dx * lpx + dy * lpy) * pdist
   local ax, ay, bx, by
 
   for i = 1, nverts do
     local vx, vy = poly[i * 2 - 1], poly[i * 2]
-    local dot = (py - vy) * (lightX - vx) + (vx - px) * (lightY - vy)
+    local lvx, lvy = vy - lightY, lightX - vx
+    local dx, dy = py - vy, vx - px
+    local vdist = lightSize * lightRad / math.sqrt(lvx * lvx + lvy * lvy)
+    local dot, n = dx * lvy - dy * lvx, (dx * lvx + dy * lvy) * vdist
 
-    if dot > 0 then
-      if pdot < 0 then
-        ax, ay = px, py
-        if bx ~= nil then break end
-      end
-    elseif pdot > 0 then
+    if dot > n and pdot < pn then
+      ax, ay = px, py
+      if bx ~= nil then break end
+    elseif dot < -n and pdot > -pn then
       bx, by = px, py
       if ax ~= nil then break end
     end
 
-    px, py, pdot = vx, vy, dot
+    px, py, pdot, pn = vx, vy, dot, n 
   end
 
   if ax and bx then
@@ -412,67 +424,72 @@ function Light:polyCaster_(poly, circle)
     if (not outA) or (not outB) then 
       local aix, aiy, bix, biy, amx, amy, bmx, bmy
       if outA then
-        aix, aiy = intersectLineCircle(blx, bly, alx, aly, bx, by, lightRad)
+        amx, amy = intersectLineCircle(blx, bly, alx, aly, bx, by, lightRad)
       else
         local alpha = lightRad / math.sqrt(adist)
-        aix, aiy = lightX + alpha * alx, lightY + alpha * aly
-        --local beta = lightSize * (1 - alpha) * alpha
-        --local nx, ny = -beta * aly, beta * alx
-        --aix, aiy = lightX + alpha * alx + nx, lightY + alpha * aly + ny
-        --amx, amy = aix - 2.0 * nx, aiy - 2.0 * ny
+        local beta = lightSize * (1 - alpha) * alpha
+        local nx, ny = -beta * aly, beta * alx
+        aix, aiy = lightX + alpha * alx + nx, lightY + alpha * aly + ny
+        amx, amy = aix - 2.0 * nx, aiy - 2.0 * ny
+        --aix, aiy = lightX + alpha * alx, lightY + alpha * aly
       end
 
       if outB then
-        bix, biy = intersectLineCircle(alx, aly, blx, bly, ax, ay, lightRad)
+        bmx, bmy = intersectLineCircle(alx, aly, blx, bly, ax, ay, lightRad)
       else
         local alpha = lightRad / math.sqrt(bdist)
-        bix, biy = lightX + alpha * blx, lightY + alpha * bly
-        --local beta = lightSize * (1 - alpha) * alpha
-        --local nx, ny = beta * bly, -beta * blx
-        --bix, biy = lightX + alpha * blx + nx, lightY + alpha * bly + ny
-        --bmx, bmy = bix - 2.0 * nx, biy - 2.0 * ny
+        local beta = lightSize * (1 - alpha) * alpha
+        local nx, ny = beta * bly, -beta * blx
+        bix, biy = lightX + alpha * blx + nx, lightY + alpha * bly + ny
+        bmx, bmy = bix - 2.0 * nx, biy - 2.0 * ny
+        --bix, biy = lightX + alpha * blx, lightY + alpha * bly
       end
 
-      local mx, my = (aix + bix) * .5, (aiy + biy) * .5
+      local mx, my = (amx + bmx) * .5, (amy + bmy) * .5
       local mlx, mly = mx - lightX, my - lightY
       local mfactor = lightRad / math.sqrt(mlx * mlx + mly * mly)
       mx, my = lightX + mlx * mfactor, lightY + mly * mfactor
 
-      local atx, aty = intersectLines(aix, aiy, -aly, alx, mx, my, -mly, mlx)
-      local btx, bty = intersectLines(bix, biy, -bly, blx, mx, my, -mly, mlx)
+      local atx, aty = intersectLines(amx, amy, -aly, alx, mx, my, -mly, mlx)
+      local btx, bty = intersectLines(bmx, bmy, -bly, blx, mx, my, -mly, mlx)
       
       if self.shadowVertexCount_ > 0 then
         inserted = inserted + 1
-        if outA then buf:writeFloat(aix, aiy)
-        else buf:writeFloat(ax, ay)
+        if outA then buf:writeFloat(amx, amy, 0)
+        else buf:writeFloat(aix, aiy, 2)
         end
       end
 
       if outA then
         inserted = inserted + 6
-        buf:writeFloat(aix, aiy, bx, by, atx, aty, bix, biy, btx, bty, btx, bty)
+        buf:writeFloat(amx, amy, 0, bx, by, 0, atx, aty, 0, bmx, bmy, 0,
+                       btx, bty, 0, btx, bty, 0)
+        buf:writeFloat(bix, biy, 2, bix, biy, 2, bmx, bmy, 0, bx, by, 1,
+                       bx, by, 1)
       elseif outB then
         inserted = inserted + 6
-        buf:writeFloat(ax, ay, aix, aiy, bix, biy, atx, aty, btx, bty, btx, bty)
+        buf:writeFloat(aix, aiy, 2, amx, amy, 0, ax, ay, 1, ax, ay, 1)
+        buf:writeFloat(ax, ay, 0, amx, amy, 0, bmx, bmy, 0, atx, aty, 0,
+                       btx, bty, 0, btx, bty, 0)
       else
-      inserted = inserted + 7
-        --buf:writeFloat(aix, aiy, 0, amx, amy, 1, ax, ay, 1,
-        --               atx, aty, 1, ax, ay, 1, btx, bty, 1,
-        --               btx, bty, 1, bx, by, 0, bmx, bmy, 1, bix, biy, 0, bix, biy, 0)
-        buf:writeFloat(ax, ay, aix, aiy, bx, by, atx, aty, bix, biy,
-                       btx, bty, btx, bty)
+        inserted = inserted + 16
+        buf:writeFloat(aix, aiy, 2, amx, amy, 0, ax, ay, 1, ax, ay, 1)
+        buf:writeFloat(ax, ay, 0, amx, amy, 0, bx, by, 0, atx, aty, 0,
+                       bmx, bmy, 0, btx, bty, 0, btx, bty, 0)
+        buf:writeFloat(bix, biy, 2, bix, biy, 2, bmx, bmy, 0, bx, by, 1,
+                       bx, by, 1)
       end
     end
   else
     if self.shadowVertexCount_ > 0 then
-      buf:writeFloat(lightX - lightRad, lightY - lightRad)
+      buf:writeFloat(lightX - lightRad, lightY - lightRad, 0)
       inserted = inserted + 1
     end
-    buf:writeFloat(lightX - lightRad, lightY - lightRad,
-                   lightX + lightRad, lightY - lightRad,
-                   lightX - lightRad, lightY + lightRad,
-                   lightX + lightRad, lightY + lightRad,
-                   lightX + lightRad, lightY + lightRad)
+    buf:writeFloat(lightX - lightRad, lightY - lightRad, 0,
+                   lightX + lightRad, lightY - lightRad, 0,
+                   lightX - lightRad, lightY + lightRad, 0,
+                   lightX + lightRad, lightY + lightRad, 0,
+                   lightX + lightRad, lightY + lightRad, 0)
     inserted = inserted + 5
   end
 
@@ -548,7 +565,7 @@ end
 
 local lightWorld = LightWorld.new(worldDef.walls)
 local mouseLight = Light.new(
-    lightBufferLayer, lightDeck, pixelTex, pixelDeck, 1, 30)
+    lightBufferLayer, lightDeck, pixelTex, pixelDeck, 1, 40)
 lightWorld:addLight(mouseLight)
 mouseLight:updateShadows()
 
@@ -563,8 +580,8 @@ if worldDef.lights then
         lightBufferLayer, lightDeck, pixelTex, pixelDeck, k, 10)
     lightWorld:addLight(l)
     local b = world:addBody(MOAIBox2DBody.DYNAMIC)
-    local f = b:addCircle(0, 0, 0.2)
-    f:setDensity(40)
+    local f = b:addCircle(0, 0, 0.5)
+    f:setDensity(6)
     f:setRestitution(0.2)
     f:setFriction(0.0)
     b:resetMassData()
@@ -575,11 +592,9 @@ if worldDef.lights then
     b:setLinearVelocity(vx, vy)
     b:setTransform(light.circle[1], light.circle[2], 0)
     l.body = b
-
     l:getNode():setColor(math.random() > 0.5 and 0.8 or 0.01,
                          math.random() > 0.5 and 0.8 or 0.01,
                          math.random() > 0.5 and 0.8 or 0.01, 0.0)
-    --l:getNode():setColor(0.025, 0.25, 0.6*0.25, 0.0)
     l:updateShadows()
     l:replaceRoot(b)
     table.insert(lights, l)
@@ -595,6 +610,7 @@ MOAICoroutine.new():run(function()
     if math.abs(mx) < 50 and math.abs(my) < 50 then
       mouseLight:getRoot():setLoc(mx, my)
     end
+    local tic = os.clock()
     for _, l in pairs(lights) do
       if l.body then
         local fx, fy = l:getNode():getWorldLoc()
@@ -606,6 +622,13 @@ MOAICoroutine.new():run(function()
         l.body:applyForce(fx, fy)
       end
       l:updateShadows()
+    end
+    local toc = os.clock() - tic
+    accum = accum + toc
+    n = n + 1
+    if n == 120 then
+      print(string.format('MSUC: %.2f ms', accum / n * 1000.0))
+      accum, n = 0, 0
     end
     coroutine.yield()
   end

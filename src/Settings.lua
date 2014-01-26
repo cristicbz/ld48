@@ -17,7 +17,7 @@ settings = {
   debug = {
     show_lines = false,
     disable_lightmap = false,
-    no_sound = true,
+    no_sound = false,
   },
 
   priorities = {
